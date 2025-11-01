@@ -1,0 +1,29 @@
+Package: SuSiE4I
+Type: Package
+Title: Fine-Mapping of Gene-Gene and Gene-Environment Interaction Using SuSiE
+Version: 0.1.0
+Author: Yihe Yang
+Maintainer: Yihe Yang <yxy1234@case.edu>
+Description: Implements interaction fine-mapping using the Sum of Single Effects (SuSiE) model, 
+    enabling detection of gene-gene and gene-environment interactions via credible sets 
+    and posterior inference.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
+Imports:
+    MASS,
+    graphics,
+    Rcpp (>= 1.0.0),
+    RcppArmadillo,
+    susieR,
+    CppMatrix,
+    Matrix,
+    stats
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+Remotes:
+    harryyiheyang/CppMatrix,
+    stephenslab/susieR
+ORCID: 0000-0001-6563-3579
