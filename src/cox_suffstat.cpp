@@ -24,6 +24,19 @@
 //   d    int       number of events
 // The per-column risk-set scans are independent and run in parallel with
 // OpenMP; they call no BLAS.
+//' Breslow risk-set quantities for Cox sufficient statistics
+//'
+//' @param X Numeric matrix.
+//' @param eta Linear predictor.
+//' @param time Survival times.
+//' @param status Event indicators (0/1).
+//' @param n_threads Number of OpenMP threads for the per-column scans.
+//' @return A list with `a` (cumulative hazard weights), `M` (martingale
+//'   residuals), `B` (risk-set means of `X` at each event time), `dev`
+//'   (events per event time), and `d` (number of events). The Cox information
+//'   is `crossprod(X, X * a) - crossprod(B, B * dev)` and the score is
+//'   `crossprod(X, M)`.
+//' @export
 // [[Rcpp::export]]
 Rcpp::List cox_riskset(const arma::mat& X,
                        const arma::vec& eta,

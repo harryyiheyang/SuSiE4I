@@ -50,6 +50,19 @@ reference_blas <- local({
   }
 })
 
+#' Row-chunked weighted cross-products
+#'
+#' Computes `crossprod(X, X * w)` and `crossprod(X, M)` in one pass over row
+#' chunks of `X`, without forming the weighted `n x p` copy of `X`.
+#'
+#' @param X Numeric matrix.
+#' @param w Non-negative weight vector of length `nrow(X)`.
+#' @param M Optional matrix with `nrow(X)` rows; `crossprod(X, M)` is
+#'   returned unweighted, so pre-multiply by `w` when needed.
+#' @param n_threads Number of OpenMP threads for the reference-BLAS path.
+#' @param block_size Number of rows per chunk.
+#' @return A list with `XtWX` and `XtM`.
+#' @export
 weighted_crossprod <- function(X, w, M = NULL, n_threads = 1L,
                                block_size = 10000L) {
   if (!is.matrix(X) || !is.double(X)) X <- as.matrix(X) + 0
