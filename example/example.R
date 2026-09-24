@@ -74,16 +74,6 @@ fit_nb <- SuSiE4I(
   susie_iter = 100, verbose = FALSE
 )
 
-# Zero-inflated Poisson
-fam_zip_sim <- mgcv::ziP(theta = c(-1, 0.3), b = 0.1)
-y_zip <- fam_zip_sim$rd(eta, rep(1, n), 1)
-fit_zip <- SuSiE4I(
-  X = X, Z = Z, y = y_zip, family = mgcv::ziP(),
-  scale_data = FALSE, n_threads = 1,
-  L_main = 3, L_int = 2, min_iter = 2, max_iter = 4,
-  susie_iter = 100, verbose = FALSE
-)
-
 # Tweedie, power = 1.5
 y_tw <- mgcv::rTweedie(mu = exp(eta), p = 1.5, phi = 1)
 fit_tw <- SuSiE4I(

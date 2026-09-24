@@ -26,22 +26,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// blockwise_crossprod
-arma::mat blockwise_crossprod(const arma::mat& X, int n_threads, int block_size);
-RcppExport SEXP _SuSiE4I_blockwise_crossprod(SEXP XSEXP, SEXP n_threadsSEXP, SEXP block_sizeSEXP) {
+// blockwise_crossprod_cpp
+arma::mat blockwise_crossprod_cpp(const arma::mat& X, int n_threads, int block_size);
+RcppExport SEXP _SuSiE4I_blockwise_crossprod_cpp(SEXP XSEXP, SEXP n_threadsSEXP, SEXP block_sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< int >::type block_size(block_sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(blockwise_crossprod(X, n_threads, block_size));
+    rcpp_result_gen = Rcpp::wrap(blockwise_crossprod_cpp(X, n_threads, block_size));
     return rcpp_result_gen;
 END_RCPP
 }
-// blockwise_crossprod2
-arma::mat blockwise_crossprod2(const arma::mat& X, const arma::mat& Z, int n_threads, int block_size);
-RcppExport SEXP _SuSiE4I_blockwise_crossprod2(SEXP XSEXP, SEXP ZSEXP, SEXP n_threadsSEXP, SEXP block_sizeSEXP) {
+// blockwise_crossprod2_cpp
+arma::mat blockwise_crossprod2_cpp(const arma::mat& X, const arma::mat& Z, int n_threads, int block_size);
+RcppExport SEXP _SuSiE4I_blockwise_crossprod2_cpp(SEXP XSEXP, SEXP ZSEXP, SEXP n_threadsSEXP, SEXP block_sizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -49,13 +49,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type Z(ZSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< int >::type block_size(block_sizeSEXP);
-    rcpp_result_gen = Rcpp::wrap(blockwise_crossprod2(X, Z, n_threads, block_size));
+    rcpp_result_gen = Rcpp::wrap(blockwise_crossprod2_cpp(X, Z, n_threads, block_size));
     return rcpp_result_gen;
 END_RCPP
 }
-// large_scale
-arma::mat large_scale(arma::mat X, bool center, bool scale, int n_threads);
-RcppExport SEXP _SuSiE4I_large_scale(SEXP XSEXP, SEXP centerSEXP, SEXP scaleSEXP, SEXP n_threadsSEXP) {
+// large_scale_cpp
+arma::mat large_scale_cpp(arma::mat X, bool center, bool scale, int n_threads);
+RcppExport SEXP _SuSiE4I_large_scale_cpp(SEXP XSEXP, SEXP centerSEXP, SEXP scaleSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -63,16 +63,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type center(centerSEXP);
     Rcpp::traits::input_parameter< bool >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(large_scale(X, center, scale, n_threads));
+    rcpp_result_gen = Rcpp::wrap(large_scale_cpp(X, center, scale, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SuSiE4I_cox_suffstat", (DL_FUNC) &_SuSiE4I_cox_suffstat, 5},
-    {"_SuSiE4I_blockwise_crossprod", (DL_FUNC) &_SuSiE4I_blockwise_crossprod, 3},
-    {"_SuSiE4I_blockwise_crossprod2", (DL_FUNC) &_SuSiE4I_blockwise_crossprod2, 4},
-    {"_SuSiE4I_large_scale", (DL_FUNC) &_SuSiE4I_large_scale, 4},
+    {"_SuSiE4I_blockwise_crossprod_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod_cpp, 3},
+    {"_SuSiE4I_blockwise_crossprod2_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod2_cpp, 4},
+    {"_SuSiE4I_large_scale_cpp", (DL_FUNC) &_SuSiE4I_large_scale_cpp, 4},
     {NULL, NULL, 0}
 };
 

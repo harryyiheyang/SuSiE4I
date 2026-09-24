@@ -5,15 +5,15 @@ cox_suffstat <- function(X, eta, time, status, n_threads = 1L) {
     .Call(`_SuSiE4I_cox_suffstat`, X, eta, time, status, n_threads)
 }
 
-blockwise_crossprod <- function(X, n_threads = 1L, block_size = 10000L) {
-    .Call(`_SuSiE4I_blockwise_crossprod`, X, n_threads, block_size)
+blockwise_crossprod_cpp <- function(X, n_threads = 4L, block_size = 10000L) {
+    .Call(`_SuSiE4I_blockwise_crossprod_cpp`, X, n_threads, block_size)
 }
 
-blockwise_crossprod2 <- function(X, Z, n_threads = 1L, block_size = 10000L) {
-    .Call(`_SuSiE4I_blockwise_crossprod2`, X, Z, n_threads, block_size)
+blockwise_crossprod2_cpp <- function(X, Z, n_threads = 4L, block_size = 10000L) {
+    .Call(`_SuSiE4I_blockwise_crossprod2_cpp`, X, Z, n_threads, block_size)
 }
 
-large_scale <- function(X, center = TRUE, scale = TRUE, n_threads = 1L) {
-    .Call(`_SuSiE4I_large_scale`, X, center, scale, n_threads)
+large_scale_cpp <- function(X, center = TRUE, scale = TRUE, n_threads = 4L) {
+    .Call(`_SuSiE4I_large_scale_cpp`, X, center, scale, n_threads)
 }
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/blockwise_crossprod.R
 \name{blockwise_crossprod}
 \alias{blockwise_crossprod}
-\title{Crossprod with direct single-thread and blockwise parallel paths}
+\title{Crossprod with direct single-thread and OpenMP parallel paths}
 \usage{
 blockwise_crossprod(X, Z = NULL, n_threads = 4L, block_size = 10000L)
 }
@@ -13,10 +13,10 @@ blockwise_crossprod(X, Z = NULL, n_threads = 4L, block_size = 10000L)
 
 \item{n_threads}{Number of threads. Defaults to 4.}
 
-\item{block_size}{Row block size for the parallel path.}
+\item{block_size}{Unused; retained for backward compatibility.}
 }
 \description{
 Computes `crossprod(X)` or `crossprod(X, Z)`. When `n_threads <= 1`,
-it uses direct dense multiplication from CppMatrix; otherwise it uses
-the row-blocked parallel C++ implementation.
+it uses direct dense multiplication from CppMatrix; otherwise the output
+is split into column blocks computed in parallel with OpenMP.
 }

@@ -73,6 +73,10 @@ XCS_refit <- NULL
 XCS_refit <- matrix(noncs_main, ncol = 1)
 colnames(XCS_refit) <- "Main_noncs_res"
 }
+W <- NULL
+WCS <- NULL
+WCS_refit <- NULL
+fitW <- NULL
 } else {
 XCS <- x_component$design
 XCS_refit <- XCS
@@ -186,8 +190,7 @@ penalty_V <- refit_penalty_variance(fitX, fitW, penalty_names)
 fit_final <- cox_fit_fixed_ridge(y, status, Data, penalty_V)
 fit_final$n_eff <- ssX$n_eff
 
-G0 <- summary(fit_final)$coefficients
-G <- if (is.null(G0) || !length(G0)) NULL else G0[, -2, drop = FALSE]
+G <- cox_coef_table(fit_final)
 MainIndex <- Identifying_MainEffect(fitX, colnames(X))
 MainIndex <- safe_add_p(MainIndex, G)
 IntIndex <- Identifying_IntEffect(fitW, colnames(W))

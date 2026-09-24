@@ -24,7 +24,7 @@ large_scale <- function(X, n_threads = 4L, center = TRUE, scale = TRUE) {
   }
 
   DN <- dimnames(X)
-  X <- .Call(`_SuSiE4I_large_scale`, X, center, scale, as.integer(n_threads))
+  X <- large_scale_cpp(X, center, scale, as.integer(n_threads))
   dimnames(X) <- DN
   X
 }

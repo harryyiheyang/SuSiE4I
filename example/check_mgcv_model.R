@@ -44,30 +44,11 @@ fit_tw_bam <- SuSiE4I(
   verbose = FALSE, refit_noncs = TRUE
 )
 
-fam_zip <- mgcv::ziP(theta = c(-1, 0.2), b = 0.1)
-y_zip <- fam_zip$rd(-0.4 + 0.8 * X[, 3] + 0.5 * Z[, 1], rep(1, n), 1)
-fit_zip_gam <- SuSiE4I(
-  X = X, Z = Z, y = y_zip, family = mgcv::ziP(),
-  mgcv_model = "gam", scale_data = FALSE, n_threads = 1,
-  L_main = 2, L_int = 2, coverage_main = 0.6, coverage_int = 0.6,
-  min_iter = 1, max_iter = 2, susie_iter = 80,
-  verbose = FALSE, refit_noncs = TRUE
-)
-fit_zip_bam <- SuSiE4I(
-  X = X, Z = Z, y = y_zip, family = mgcv::ziP(theta = c(-1, 0.2), b = 0.1),
-  mgcv_model = "bam", scale_data = FALSE, n_threads = 1,
-  L_main = 2, L_int = 2, coverage_main = 0.6, coverage_int = 0.6,
-  min_iter = 1, max_iter = 2, susie_iter = 80,
-  verbose = FALSE, refit_noncs = TRUE
-)
-
 stopifnot(
   inherits(fit_nb_gam$fitJoint, "gam"),
   inherits(fit_nb_bam$fitJoint, "bam"),
   identical(fit_nb_bam$fitJoint$family$getTheta(TRUE), 2.75),
   inherits(fit_tw_gam$fitJoint, "gam"),
   inherits(fit_tw_bam$fitJoint, "bam"),
-  identical(fit_tw_bam$fitJoint$family$getTheta(TRUE), 1.6),
-  inherits(fit_zip_gam$fitJoint, "gam"),
-  inherits(fit_zip_bam$fitJoint, "bam")
+  identical(fit_tw_bam$fitJoint$family$getTheta(TRUE), 1.6)
 )

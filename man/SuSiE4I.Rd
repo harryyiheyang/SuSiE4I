@@ -49,9 +49,8 @@ survival-time vector.}
 string. Cumulative-link models use `"clm_logit"` or `"clm_probit"`.}
 
 \item{mgcv_model}{`NULL`, `"gam"`, or `"bam"` for mgcv refits. `NULL`
-selects `"gam"` when n < 50000 and `"bam"` otherwise. For Gaussian
-outcomes this controls only the final formal fit; intermediate joint
-refits use the exact ridge solver.}
+selects `"gam"`. For Gaussian outcomes this controls only the final
+formal fit; intermediate joint refits use the exact ridge solver.}
 
 \item{crossprodX}{Optional precomputed cross-product of `X` for Gaussian paths.}
 
@@ -64,7 +63,7 @@ refits use the exact ridge solver.}
 \item{L_int}{Number of interaction SuSiE components.}
 
 \item{select_env}{Whether to fine-map columns of `Z`. Supported for all
-outcome paths, including ZIP.}
+outcome paths.}
 
 \item{L_env}{Number of environmental SuSiE components.}
 
@@ -125,7 +124,7 @@ A list containing the fitted SuSiE objects, final joint model,
 }
 \description{
 Fits main and interaction effects for Gaussian, GLM/mgcv,
-ordered-categorical, ZIP, and Cox outcomes.
+ordered-categorical, and Cox outcomes.
 Gaussian outer-loop joint refits use an exact sufficient-statistic ridge
 solve with the current penalty `phi / V`. After the final design is fixed,
 the dispersion is iterated to its ridge fixed point and one final mgcv fit

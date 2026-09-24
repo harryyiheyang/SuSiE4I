@@ -1,7 +1,7 @@
 #' SuSiE4I: Iterative SuSiE fitting for main and interaction effects
 #'
 #' Fits main and interaction effects for Gaussian, GLM/mgcv,
-#' ordered-categorical, ZIP, and Cox outcomes.
+#' ordered-categorical, and Cox outcomes.
 #' Gaussian outer-loop joint refits use an exact sufficient-statistic ridge
 #' solve with the current penalty `phi / V`. After the final design is fixed,
 #' the dispersion is iterated to its ridge fixed point and one final mgcv fit
@@ -15,16 +15,15 @@
 #' @param family Outcome family. May be a supported family object or dispatch
 #'   string. Cumulative-link models use `"clm_logit"` or `"clm_probit"`.
 #' @param mgcv_model `NULL`, `"gam"`, or `"bam"` for mgcv refits. `NULL`
-#'   selects `"gam"` when n < 50000 and `"bam"` otherwise. For Gaussian
-#'   outcomes this controls only the final formal fit; intermediate join
-#'   refits use the exact ridge solver.
+#'   selects `"gam"`. For Gaussian outcomes this controls only the final
+#'   formal fit; intermediate joint refits use the exact ridge solver.
 #' @param crossprodX Optional precomputed cross-product of `X` for Gaussian paths.
 #' @param scale_data Whether to standardize `X` and `Z`.
 #' @param n_threads Number of threads used for cross-products.
 #' @param L_main Number of main-effect SuSiE components.
 #' @param L_int Number of interaction SuSiE components.
 #' @param select_env Whether to fine-map columns of `Z`. Supported for all
-#'   outcome paths, including ZIP.
+#'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
 #' @param include_x_squared Whether to include squared main-effect summaries in
@@ -68,7 +67,7 @@
 #'
 #' @importFrom Matrix crossprod
 #' @importFrom stats var lm glm coef binomial gaussian cor cov2cor reformulate sd
-#' @importFrom mgcv gam bam nb tw betar scat ziP
+#' @importFrom mgcv gam bam nb tw betar scat
 #' @importFrom susieR susie_ss coef.susie
 #' @importFrom CppMatrix matrixMultiply matrixVectorMultiply matrixEigen
 #' @importFrom graphics plot text
@@ -330,67 +329,6 @@ returnModel = returnModel
 ))
 }
 
-is_zip_string <- !is.null(family_string) &&
-family_string %in% c("zip", "zipoi", "zero-inflated-poisson",
-                     "zero_inflated_poisson", "zero inflated poisson")
-if (is_zip_string || zip_is_family(family)) {
-zip_family <- if (is_zip_string) mgcv::ziP() else family
-if (is.null(Z)) {
-return(Run_GG_ZIP(
-X = X, y = y, family = zip_family,
-include_x_squared = include_x_squared,
-mgcv_model = mgcv_model,
-Lmain = L_main, Lint = L_int,
-max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
-susie_para_main = susie_para_main,
-susie_para_int = susie_para_int,
-L.init = L.init,
-x_noncs_var = x_noncs_var,
-w_noncs_var = w_noncs_var,
-noncs_max_abs_cor = noncs_max_abs_cor,
-suff_block_size = suff_block_size,
-verbose = verbose, n_threads = n_threads,
-returnModel = returnModel
-))
-}
-if (select_env) {
-return(Run_GGE_Select_ZIP(
-X = X, Z = Z, y = y, family = zip_family,
-include_x_squared = include_x_squared,
-mgcv_model = mgcv_model,
-Lmain = L_main, Lint = L_int, Lenv = L_env,
-max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
-susie_para_main = susie_para_main,
-susie_para_int = susie_para_int,
-susie_para_env = susie_para_env,
-L.init = L.init,
-x_noncs_var = x_noncs_var,
-w_noncs_var = w_noncs_var,
-noncs_max_abs_cor = noncs_max_abs_cor,
-suff_block_size = suff_block_size,
-verbose = verbose, n_threads = n_threads,
-returnModel = returnModel
-))
-}
-return(Run_GGE_ZIP(
-X = X, Z = Z, y = y, family = zip_family,
-include_x_squared = include_x_squared,
-mgcv_model = mgcv_model,
-Lmain = L_main, Lint = L_int,
-noint_env = noint_env,
-max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
-susie_para_main = susie_para_main,
-susie_para_int = susie_para_int,
-L.init = L.init,
-x_noncs_var = x_noncs_var,
-w_noncs_var = w_noncs_var,
-noncs_max_abs_cor = noncs_max_abs_cor,
-suff_block_size = suff_block_size,
-verbose = verbose, n_threads = n_threads,
-returnModel = returnModel
-))
-}
-
 if (!is.null(family_string)) {
 if (family_string %in% c("gaussian", "normal", "linear")) {
 family <- gaussian()
@@ -401,7 +339,7 @@ family <- mgcv::nb(theta = NULL)
 } else if (family_string %in% c("lognormal", "lnormal", "log-normal")) {
 stop("family = 'lognormal' is not supported. Use log(y) with family = 'gaussian' instead.")
 } else {
-stop("Unsupported family string. Use gaussian, binomial, logit, negbin, ocat, zip, cox, or a clm_<link> family.")
+stop("Unsupported family string. Use gaussian, binomial, logit, negbin, ocat, cox, or a clm_<link> family.")
 }
 }
 
@@ -412,7 +350,7 @@ stop("family must be NULL, a supported string, or a GLM family object.")
 if (identical(family$family, "gaussian") && identical(family$link, "identity")) {
 if (is.null(Z)) {
 return(Run_GG(
-X = X, y = y, crossprodX = crossprodX,
+X = X, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -429,7 +367,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select(
-X = X, Z = Z, y = y, crossprodX = crossprodX,
+X = X, Z = Z, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 L.init = L.init,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
@@ -446,7 +384,7 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE(
-X = X, Z = Z, y = y, crossprodX = crossprodX,
+X = X, Z = Z, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,

@@ -67,55 +67,42 @@ colnames(out) <- colnames_WW
 out
 }
 
-Identifying_MainEffect=function(fit,nam){
-if (is.null(fit)) return(NULL)
-summ=summary(fit)$vars
-g=unique(summ$cs[which(summ$cs>0)])
-if (!length(g)) return(NULL)
-bb=summary(fit)$cs
-S=list()
-for(i in g){
-indi=which(summ$cs==i)
-a=summ$variable[indi]
-b=data.frame(Index=a,Variable=nam[summ$variable[indi]],CS=paste0("Main_CS",i),logBF=bb$cs_log10bf[bb$cs==i] * log(10),PIP=summ$variable_prob[indi])
-S[[i]]=b
+susie_cs_list <- function(fit) {
+if (is.null(fit) || is.null(fit$sets$cs) || !length(fit$sets$cs)) {
+return(list(index = integer(0), vars = list()))
 }
-return(do.call(rbind,S))
+index <- as.integer(fit$sets$cs_index)
+vars <- lapply(fit$sets$cs, as.integer)
+ord <- order(index)
+list(index = index[ord], vars = vars[ord])
 }
-###############################################################################
-Identifying_EnvEffect=function(fit,nam){
-if (is.null(fit)) return(NULL)
-summ=summary(fit)$vars
-g=unique(summ$cs[which(summ$cs>0)])
-if (!length(g)) return(NULL)
-bb=summary(fit)$cs
-S=list()
-for(i in g){
-indi=which(summ$cs==i)
-a=summ$variable[indi]
-b=data.frame(Index=a,Variable=nam[summ$variable[indi]],CS=paste0("Env_CS",i),logBF=bb$cs_log10bf[bb$cs==i] * log(10),PIP=summ$variable_prob[indi])
-S[[i]]=b
+
+Identifying_CSEffect <- function(fit, nam, prefix) {
+cs <- susie_cs_list(fit)
+if (!length(cs$index)) return(NULL)
+S <- lapply(seq_along(cs$index), function(k) {
+i <- cs$index[k]
+a <- cs$vars[[k]]
+a <- a[order(fit$pip[a], decreasing = TRUE)]
+data.frame(Index = a, Variable = unname(nam[a]), CS = paste0(prefix, i),
+           logBF = unname(fit$lbf[i]), PIP = unname(fit$pip[a]))
+})
+out <- do.call(rbind, S)
+rownames(out) <- NULL
+out
 }
-return(do.call(rbind,S))
+
+Identifying_MainEffect <- function(fit, nam) {
+Identifying_CSEffect(fit, nam, "Main_CS")
 }
 ###############################################################################
-Identifying_IntEffect=function(fitW,namW){
-if (is.null(fitW) || is.null(namW)) return(NULL)
-summ=summary(fitW)$vars
-if(length(which(summ$cs>0))>0){
-bb=summary(fitW)$cs
-g=unique(summ$cs[which(summ$cs>0)])
-S=list()
-for(i in g){
-indi=which(summ$cs==i)
-a=summ$variable[indi]
-b=data.frame(Index=a,Variable=namW[summ$variable[indi]],CS=paste0("Int_CS",i),logBF=bb$cs_log10bf[bb$cs==i] * log(10),PIP=summ$variable_prob[indi])
-S[[i]]=b
+Identifying_EnvEffect <- function(fit, nam) {
+Identifying_CSEffect(fit, nam, "Env_CS")
 }
-return(do.call(rbind,S))
-}else{
-return(NULL)
-}
+###############################################################################
+Identifying_IntEffect <- function(fitW, namW) {
+if (is.null(namW)) return(NULL)
+Identifying_CSEffect(fitW, namW, "Int_CS")
 }
 
 filter_noncs_interactions <- function(IntIndex) {
@@ -666,13 +653,14 @@ FALSE
 
 build_cs_design_from_fit <- function(X, fit, prefix) {
 if (is.null(fit)) return(list(design = NULL, cs_indices = integer(0)))
-CSdt <- summary(fit)$vars
-cs_indices <- sort(unique(CSdt$cs[CSdt$cs > 0]))
+cs <- susie_cs_list(fit)
+cs_indices <- cs$index
 if (!length(cs_indices)) return(list(design = NULL, cs_indices = integer(0)))
 
 Alpha_filtered <- fit$alpha * 0
-for (i in cs_indices) {
-vars_in_cs_i <- CSdt$variable[CSdt$cs == i]
+for (k in seq_along(cs_indices)) {
+i <- cs_indices[k]
+vars_in_cs_i <- cs$vars[[k]]
 vars_in_cs_i <- vars_in_cs_i[vars_in_cs_i >= 1L & vars_in_cs_i <= ncol(X)]
 if (length(vars_in_cs_i) > 0) Alpha_filtered[i, vars_in_cs_i] <- fit$alpha[i, vars_in_cs_i] / sum(fit$alpha[i, vars_in_cs_i])
 }

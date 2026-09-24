@@ -141,23 +141,14 @@ estimate_prior_variance <- function(X, y, Z, PRS, SNPInfo,
       family_string %in% c("cox", "coxph", "survival")) {
     path <- "cox"
   } else if (!is.null(family_string) && startsWith(family_string, "clm_")) {
-    path <- "ordinal"
     clm_link <- sub("^clm_", "", family_string)
     clm_link <- ocat_validate_link(clm_link)
-  } else if (!is.null(family_string) &&
-             family_string %in% c("ocat", "ordinal", "ordered",
-                                  "ordered.categorical", "ordered_categorical")) {
-    path <- "ordinal"
-    clm_link <- "logit"
-  } else if (ocat_is_family(family)) {
-    path <- "ordinal"
-    clm_link <- "logit"
+    path <- if (identical(clm_link, "logit")) "ocat" else "ordinal"
   } else if ((!is.null(family_string) &&
-              family_string %in% c("zip", "zipoi", "zero-inflated-poisson",
-                                   "zero_inflated_poisson", "zero inflated poisson")) ||
-             zip_is_family(family)) {
-    path <- "zip"
-    family <- if (zip_is_family(family)) family else mgcv::ziP()
+              family_string %in% c("ocat", "ordinal", "ordered",
+                                   "ordered.categorical", "ordered_categorical")) ||
+             ocat_is_family(family)) {
+    path <- "ocat"
   } else {
     if (!is.null(family_string)) {
       if (family_string %in% c("gaussian", "normal", "linear")) {
@@ -218,20 +209,24 @@ estimate_prior_variance <- function(X, y, Z, PRS, SNPInfo,
     work_y <- work$pseudo_response
     weights <- work$weights
     n_ss <- max(0.95 * n, work$n_eff)
-  } else if (identical(path, "zip")) {
-    yy <- as.numeric(y)
-    family <- zip_prepare_family(family)
-    response_info <- mgcv_prepare_response(yy, family)
+  } else if (identical(path, "ocat")) {
+    y_info <- ocat_prepare_response(y, family = if (ocat_is_family(family)) family else NULL)
+    if (!ocat_is_family(family)) family <- mgcv::ocat(R = y_info$ncat)
     pred <- mgcv_predictor_data(Z = Q_all, n = n)
-    dat <- cbind(response_info$data, pred)
-    fit <- mgcv_fit_explicit(
-      response_info$response, colnames(pred), dat, family,
-      mgcv_model = mgcv_model
-    )
-    work <- zip_extract_working(fit, yy, eta_clip_range = c(-50, 50))
-    work_y <- work$z
-    weights <- work$weights
-    n_ss <- max(0.95 * n, work$n_eff)
+    dat <- cbind(data.frame(y = as.integer(y_info$y)), pred)
+    fit <- mgcv_fit_explicit("y", colnames(pred), dat, family,
+                             mgcv_model = mgcv_model)
+    eta_work <- pmin(pmax(as.numeric(fit$linear.predictors), -50), 50)
+    weights <- fit$working.weights
+    if (is.null(weights)) weights <- fit$weights
+    weights <- as.numeric(weights)
+    work_y <- eta_work + as.numeric(fit$residuals)
+    bad <- !is.finite(work_y) | !is.finite(weights) | weights <= 0
+    if (mean(bad) > 0.9) stop("Too many invalid OCAT working observations.")
+    work_y[bad] <- 0
+    weights[bad] <- 0
+    weights <- robust_weight(weights, cutoff = 0.0025)
+    n_ss <- max(0.95 * n, sum(weights)^2 / sum(weights^2))
   } else if (identical(path, "cox")) {
     if (is.null(status)) stop("status is required for Cox models unless y is a Surv object.")
     status <- as.integer(status)
@@ -253,7 +248,7 @@ estimate_prior_variance <- function(X, y, Z, PRS, SNPInfo,
   }
 
   project_block <- function(X_block, Q_loco) {
-    if (path %in% c("gaussian", "glm", "zip")) {
+    if (path %in% c("gaussian", "glm", "ocat")) {
       ZI <- cbind(Intercept = 1, Q_loco)
       ss <- weighted_projected_suffstats(
         X = X_block, y = work_y, ZI = ZI,

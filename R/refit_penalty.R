@@ -323,3 +323,15 @@ scale = FALSE
 }
 fit
 }
+
+cox_coef_table <- function(fit) {
+G0 <- summary(fit)$coefficients
+if (is.null(G0) || !length(G0)) return(NULL)
+est <- G0[, "coef"]
+se <- G0[, "se(coef)"]
+z <- est / se
+G <- cbind(Estimate = est, `Std. Error` = se, `z value` = z,
+           `Pr(>|z|)` = 2 * stats::pnorm(-abs(z)))
+rownames(G) <- rownames(G0)
+G
+}

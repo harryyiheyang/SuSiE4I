@@ -200,7 +200,7 @@ Run_GGE_Select_Cox <- function(X, Z, y, status,
     y, status, Data, penalty_V
   )
   fit_final$n_eff <- ssX$n_eff
-  G <- summary(fit_final)$coefficients[, -2, drop = FALSE]
+  G <- cox_coef_table(fit_final)
   MainIndex <- Identifying_MainEffect(fitX, colnames(X))
   MainIndex <- safe_add_p(MainIndex, G)
   IntIndex <- Identifying_IntEffect(fitW, colnames(W))

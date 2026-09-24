@@ -1,13 +1,13 @@
-#' Crossprod with direct single-thread and blockwise parallel paths
+#' Crossprod with direct single-thread and OpenMP parallel paths
 #'
 #' Computes `crossprod(X)` or `crossprod(X, Z)`. When `n_threads <= 1`,
-#' it uses direct dense multiplication from CppMatrix; otherwise it uses
-#' the row-blocked parallel C++ implementation.
+#' it uses direct dense multiplication from CppMatrix; otherwise the output
+#' is split into column blocks computed in parallel with OpenMP.
 #'
 #' @param X Numeric matrix.
 #' @param Z Optional second matrix. If provided, computes `crossprod(X, Z)`.
 #' @param n_threads Number of threads. Defaults to 4.
-#' @param block_size Row block size for the parallel path.
+#' @param block_size Unused; retained for backward compatibility.
 #' @export
 blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L) {
   if (!is.matrix(X) || !is.numeric(X)) stop("X must be a numeric matrix.")
@@ -33,7 +33,7 @@ blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L
   }
 
   if (is.null(Z)) {
-    return(.Call(`_SuSiE4I_blockwise_crossprod`, X, n_threads, block_size))
+    return(blockwise_crossprod_cpp(X, n_threads, block_size))
   }
-  .Call(`_SuSiE4I_blockwise_crossprod2`, X, Z, n_threads, block_size)
+  blockwise_crossprod2_cpp(X, Z, n_threads, block_size)
 }
