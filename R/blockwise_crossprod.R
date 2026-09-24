@@ -1,12 +1,15 @@
-#' Crossprod with direct single-thread and OpenMP parallel paths
+#' Crossprod using the system BLAS or an OpenMP fallback
 #'
-#' Computes `crossprod(X)` or `crossprod(X, Z)`. When `n_threads <= 1`,
-#' it uses direct dense multiplication from CppMatrix; otherwise the output
-#' is split into column blocks computed in parallel with OpenMP.
+#' Computes `crossprod(X)` or `crossprod(X, Z)`. With an optimized BLAS
+#' (OpenBLAS, MKL, FlexiBLAS, ...), it calls `base::crossprod()`, whose
+#' threading is controlled by the BLAS (e.g. `OPENBLAS_NUM_THREADS`). With R's
+#' reference BLAS and `n_threads > 1`, the output is split into column blocks
+#' computed in parallel with OpenMP.
 #'
 #' @param X Numeric matrix.
 #' @param Z Optional second matrix. If provided, computes `crossprod(X, Z)`.
-#' @param n_threads Number of threads. Defaults to 4.
+#' @param n_threads Number of OpenMP threads for the reference-BLAS path.
+#'   Defaults to 4.
 #' @param block_size Unused; retained for backward compatibility.
 #' @export
 blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L) {
@@ -25,11 +28,9 @@ blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L
   n_threads <- as.integer(n_threads)
   block_size <- as.integer(block_size)
 
-  if (n_threads <= 1L) {
-    if (is.null(Z)) {
-      return(CppMatrix::matrixMultiply(X, X, transA = TRUE))
-    }
-    return(CppMatrix::matrixMultiply(X, Z, transA = TRUE))
+  if (n_threads <= 1L || !reference_blas()) {
+    if (is.null(Z)) return(base::crossprod(X))
+    return(base::crossprod(X, Z))
   }
 
   if (is.null(Z)) {
@@ -37,3 +38,14 @@ blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L
   }
   blockwise_crossprod2_cpp(X, Z, n_threads, block_size)
 }
+
+reference_blas <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      blas <- tryCatch(extSoftVersion()[["BLAS"]], error = function(e) "")
+      cached <<- !nzchar(blas) || grepl("Rblas", blas, fixed = TRUE)
+    }
+    cached
+  }
+})
