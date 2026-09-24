@@ -29,36 +29,39 @@ cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
   q <- ncol(ZI)
   projection_precision <- align_projection_precision(ZI, nuisance_precision)
 
-  XZE <- cbind(Xblk, eta, ZI)
+  N <- cbind(eta, ZI)
+  k <- ncol(N)
+  status <- as.integer(surv_status)
 
-  ss <- cox_suffstat(X = XZE, eta = eta, time = surv_time,
-                     status = as.integer(surv_status), n_threads = n_threads)
-  a <- as.numeric(ss$a)
-  B <- as.matrix(ss$B)
-  XZEty <- as.numeric(ss$Xty)
-  n_eff <- ss$d
+  rsX <- cox_riskset(X = Xblk, eta = eta, time = surv_time,
+                     status = status, n_threads = n_threads)
+  rsN <- cox_riskset(X = N, eta = eta, time = surv_time,
+                     status = status, n_threads = 1L)
+  a <- as.numeric(rsX$a)
+  M <- as.numeric(rsX$M)
+  dev <- as.numeric(rsX$dev)
+  n_eff <- rsX$d
 
-  XZEa <- XZE * sqrt(a)
-  A <- blockwise_crossprod(XZEa, n_threads = n_threads,
-                           block_size = block_size)
-  BtB <- blockwise_crossprod(B, n_threads = n_threads,
-                             block_size = block_size)
-  XZEtXZE <- A - BtB
-  XZEtXZE <- (XZEtXZE + t(XZEtXZE)) / 2
+  # [X N]' diag(a) [X N] - B' diag(dev) B, split into X and N blocks.
+  AX <- weighted_crossprod(Xblk, a, cbind(N * a, M),
+                           n_threads = n_threads, block_size = block_size)
+  BX <- weighted_crossprod(rsX$B, dev, rsN$B * dev,
+                           n_threads = n_threads, block_size = block_size)
+  XX <- AX$XtWX - BX$XtWX
+  XN <- AX$XtM[, seq_len(k), drop = FALSE] - BX$XtM
+  NN <- crossprod(N, N * a) - crossprod(rsN$B, rsN$B * dev)
+  NN <- (NN + t(NN)) / 2
 
-  idxX <- seq_len(p)
-  idxE <- p + 1L
-  idxZ <- p + 1L + seq_len(q)
-
-  XtX <- XZEtXZE[idxX, idxX, drop = FALSE]
-  XtE <- XZEtXZE[idxX, idxE, drop = FALSE]
-  XtZ <- XZEtXZE[idxX, idxZ, drop = FALSE]
-  ZtZ <- XZEtXZE[idxZ, idxZ, drop = FALSE]
+  XtX <- (XX + t(XX)) / 2
+  dimnames(XtX) <- list(colnames(Xblk), colnames(Xblk))
+  XtE <- XN[, 1L, drop = FALSE]
+  XtZ <- XN[, 1L + seq_len(q), drop = FALSE]
+  ZtZ <- NN[1L + seq_len(q), 1L + seq_len(q), drop = FALSE]
   diag(ZtZ) <- diag(ZtZ) + projection_precision
-  ZtX <- XZEtXZE[idxZ, idxX, drop = FALSE]
-  ZtE <- XZEtXZE[idxZ, idxE, drop = FALSE]
-  XtM <- XZEty[idxX]
-  ZtM <- XZEty[idxZ]
+  ZtX <- t(XtZ)
+  ZtE <- NN[1L + seq_len(q), 1L, drop = FALSE]
+  XtM <- as.numeric(AX$XtM[, k + 1L])
+  ZtM <- as.numeric(crossprod(ZI, M))
 
   Zinv_ZtX <- solve_with_ridge(ZtZ, ZtX, ridge = ridge)
   Zinv_ZtE_score <- solve_with_ridge(

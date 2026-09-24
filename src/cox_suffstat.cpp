@@ -1,138 +1,114 @@
 // cox_suffstat.cpp
-// Single-pass Breslow accumulation for Cox fine-mapping sufficient statistics.
-// Produces the pieces needed to build XtX = A - B'B and Xty = X' M,
-// without ever forming an n x n matrix.
+// Breslow risk-set quantities for Cox fine-mapping sufficient statistics.
+// XtX = X' diag(a) X - B' diag(dev) B and Xty = X' M are assembled on the R
+// side from these pieces, without forming an n x n matrix or copying X.
 //
-// Breslow ties handled by two-stage block flattening: all individuals sharing
-// the same event/censoring time share the risk-set sums S0 / S1 evaluated at
-// the end of their tied block.
+// Breslow ties: all individuals sharing the same time share the risk-set sums
+// S0 / S1 evaluated at the end of their tied block. B has one row per event
+// time (not per event); dev holds the number of events at that time.
 
 #include <RcppArmadillo.h>
+#include <algorithm>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::plugins(openmp)]]
 
 // Returns:
-//   a      (n)   per-individual cumulative weight  Lambda0(t_i) * exp(eta_i)
-//   B      (d x p) risk-set weighted means xbar_j at each EVENT time (Breslow)
-//   Xty    (p)   X' M, the Cox score vector
-//   d      int   number of events
-//
-// Inputs assumed: time, status, eta are length n; X is n x p.
-// Sorting is done internally (descending time). Ties in time are flattened.
-// n_threads: the row scan is sequential; this only sets the OpenMP thread
-//   count seen by downstream BLAS-backed crossprods. Default 1.
+//   a    (n)       per-individual cumulative weight Lambda0(t_i) * exp(eta_i)
+//   M    (n)       martingale residuals status_i - a_i
+//   B    (nb x p)  risk-set weighted means of X at each event time
+//   dev  (nb)      number of events at each event time
+//   d    int       number of events
+// The per-column risk-set scans are independent and run in parallel with
+// OpenMP; they call no BLAS.
 // [[Rcpp::export]]
-Rcpp::List cox_suffstat(const arma::mat& X,
-                        const arma::vec& eta,
-                        const arma::vec& time,
-                        const arma::ivec& status,
-                        int n_threads = 1) {
+Rcpp::List cox_riskset(const arma::mat& X,
+                       const arma::vec& eta,
+                       const arma::vec& time,
+                       const arma::ivec& status,
+                       int n_threads = 1) {
 
   const arma::uword n = X.n_rows;
   const arma::uword p = X.n_cols;
-
-#ifdef _OPENMP
-  if (n_threads < 1) n_threads = 1;
-  omp_set_num_threads(n_threads);
-#endif
+  if (eta.n_elem != n || time.n_elem != n || status.n_elem != n) {
+    Rcpp::stop("eta, time, and status must have one value per row of X.");
+  }
+  const int nt = std::max(1, n_threads);
 
   // descending sort by time; risk set then grows monotonically as we advance
   arma::uvec ord = arma::sort_index(time, "descend");
 
-  // eta shift: subtract max(eta) before exp for numerical stability.
-  // The shift cancels in every risk-set ratio (S1/S0, dev/S0) and in a_i
-  // (exp(eta_i) * Lambda0), so it leaves all outputs unchanged. Using max(eta)
-  // makes the largest weight exactly 1 (no overflow, no over-shrinking).
-  double eta_max = eta.max();
-  arma::vec  w  = arma::exp(eta - eta_max);  // shifted weights, original order
-  arma::vec  a(n, arma::fill::zeros);        // output cumulative weight, original order
+  // eta shift cancels in every risk-set ratio and in a_i.
+  const double eta_max = eta.max();
+  arma::vec w = arma::exp(eta - eta_max);
 
-  // running risk-set sums
-  double         S0 = 0.0;
-  arma::rowvec   S1(p, arma::fill::zeros);
-
-  // event bookkeeping, recorded per EVENT (collected latest-first in descending pass)
-  std::vector<arma::rowvec> ev_xbar;       // flattened xbar_j (length p), one per event
-  // event-time BLOCK bookkeeping for Lambda0 (one entry per event time, not per event)
-  std::vector<double> blk_time;            // event-block time
-  std::vector<double> blk_inc;             // Breslow increment dev / S0_flat
-
+  // ----- pass 1: tied blocks, S0 at each block end, events per block -----
+  std::vector<arma::uword> blk_end;   // exclusive end (in sorted order) of event blocks
+  std::vector<double> blk_S0, blk_time;
+  std::vector<double> blk_dev;
+  double S0 = 0.0;
   arma::uword i = 0;
   while (i < n) {
-    // identify tied block [i, j) with identical time
     arma::uword j = i;
-    double t_block = time(ord(i));
-    while (j < n && time(ord(j)) == t_block) ++j;
-
-    // ----- stage 1: accumulate the whole block into S0, S1 -----
-    // No inner OpenMP here: the row scan is inherently sequential (cumsum
-    // dependence), and a per-row fork-join would fire ~n times on continuous
-    // time, dwarfing any benefit. Armadillo's lazy row add triggers BLAS/SIMD
-    // with zero temporary copy. Parallelism is reserved for the crossprods
-    // (A, B'B) on the R side via multithreaded BLAS.
-    for (arma::uword r = i; r < j; ++r) {
-      arma::uword idx = ord(r);
-      double wr = w(idx);
-      S0 += wr;
-      S1 += wr * X.row(idx);
-    }
-
-    // ----- stage 2: block-flattened risk-set mean shared by all tied rows -----
-    arma::rowvec xbar = S1 / S0;           // Breslow: same for every event in block
-
-    // count events in block; record one xbar per event, one increment per block
+    const double t_block = time(ord(i));
     arma::uword dev = 0;
-    for (arma::uword r = i; r < j; ++r)
-      if (status(ord(r)) == 1) ++dev;
-
-    if (dev > 0) {
-      for (arma::uword e = 0; e < dev; ++e) ev_xbar.push_back(xbar);
-      blk_time.push_back(t_block);
-      blk_inc.push_back((double)dev / S0);  // Breslow Lambda0 increment for this time
+    while (j < n && time(ord(j)) == t_block) {
+      S0 += w(ord(j));
+      if (status(ord(j)) == 1) ++dev;
+      ++j;
     }
-
+    if (dev > 0) {
+      blk_end.push_back(j);
+      blk_S0.push_back(S0);
+      blk_time.push_back(t_block);
+      blk_dev.push_back(static_cast<double>(dev));
+    }
     i = j;
   }
+  const arma::uword nb = blk_end.size();
+  double d = 0.0;
+  for (arma::uword b = 0; b < nb; ++b) d += blk_dev[b];
 
-  const arma::uword d = ev_xbar.size();
+  // ----- pass 2: per-column risk-set means at event blocks -----
+  arma::mat B(nb, p, arma::fill::none);
+#pragma omp parallel for schedule(static) num_threads(nt)
+  for (arma::uword c = 0; c < p; ++c) {
+    const double* xc = X.colptr(c);
+    double S1 = 0.0;
+    arma::uword r = 0;
+    for (arma::uword b = 0; b < nb; ++b) {
+      for (; r < blk_end[b]; ++r) {
+        const arma::uword idx = ord(r);
+        S1 += w(idx) * xc[idx];
+      }
+      B(b, c) = S1 / blk_S0[b];
+    }
+  }
 
-  // ----- build a_i = exp(eta_i) * Lambda0(t_i) -----
-  // Lambda0(t_i) = sum over event-time blocks with t_block <= t_i of (dev / S0_flat).
-  // Increments are accumulated PER EVENT-TIME BLOCK (not per row): tied events at the
-  // same time contribute a single dev/S0 term, otherwise the increment is double-counted.
-  // Single ascending sweep over individuals; blocks were created in descending order,
-  // so iterate them in reverse to get ascending event times.
+  // ----- a_i = exp(eta_i) * Lambda0(t_i), Breslow increment per event time -----
   arma::uvec ord_asc = arma::sort_index(time, "ascend");
+  arma::vec a(n, arma::fill::zeros);
   double Lam = 0.0;
-  long bptr = (long)blk_time.size() - 1;     // smallest event time is the last block pushed
+  long bptr = static_cast<long>(nb) - 1;
   for (arma::uword r = 0; r < n; ++r) {
-    arma::uword idx = ord_asc(r);
-    double ti = time(idx);
+    const arma::uword idx = ord_asc(r);
+    const double ti = time(idx);
     while (bptr >= 0 && blk_time[bptr] <= ti) {
-      Lam += blk_inc[bptr];
+      Lam += blk_dev[bptr] / blk_S0[bptr];
       --bptr;
     }
     a(idx) = w(idx) * Lam;
   }
-
-  // ----- Xty = X' M, with M_i = status_i - a_i -----
   arma::vec M = arma::conv_to<arma::vec>::from(status) - a;
-  arma::vec Xty = X.t() * M;
-
-  // ----- assemble B (d x p) from recorded event xbars -----
-  arma::mat B(d, p, arma::fill::none);
-  for (arma::uword e = 0; e < d; ++e) {
-    B.row(e) = ev_xbar[e];
-  }
 
   return Rcpp::List::create(
-    Rcpp::Named("a")   = a,        // n: per-individual cumulative weight
-    Rcpp::Named("B")   = B,        // d x p: event-time risk-set means
-    Rcpp::Named("Xty") = Xty,      // p: Cox score vector
-    Rcpp::Named("d")   = (int)d,   // number of events
-    Rcpp::Named("M")   = M         // n: martingale residuals (debug / reuse)
+    Rcpp::Named("a")   = a,
+    Rcpp::Named("M")   = M,
+    Rcpp::Named("B")   = B,
+    Rcpp::Named("dev") = arma::vec(blk_dev),
+    Rcpp::Named("d")   = static_cast<int>(d)
   );
 }

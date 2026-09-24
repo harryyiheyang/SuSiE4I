@@ -249,18 +249,15 @@ ocat_suffstat_block <- function(Xblk, y_int, eta, Znui, alpha,
   h <- pmax(as.numeric(pp$h_eta), 1e-8)
   sw <- sqrt(h)
 
-  Xh <- Xblk * sw
-  HXX <- blockwise_crossprod(Xh, n_threads = n_threads,
-                             block_size = block_size)
-  HXeta_eta <- as.numeric(CppMatrix::matrixMultiply(
-    Xblk, matrix(h * eta, ncol = 1), transA = TRUE
-  ))
-  UX <- as.numeric(CppMatrix::matrixMultiply(
-    Xblk, matrix(pp$u_eta, ncol = 1), transA = TRUE
-  ))
-  HXT <- CppMatrix::matrixMultiply(
-    Xblk, pp$h_eta_alpha, transA = TRUE
+  hZ <- if (q > 0L) Znui * h else NULL
+  wc <- weighted_crossprod(
+    Xblk, h, cbind(h * eta, pp$u_eta, pp$h_eta_alpha, hZ),
+    n_threads = n_threads, block_size = block_size
   )
+  HXX <- wc$XtWX
+  HXeta_eta <- as.numeric(wc$XtM[, 1L])
+  UX <- as.numeric(wc$XtM[, 2L])
+  HXT <- wc$XtM[, 2L + seq_len(K), drop = FALSE]
   HTeta_eta <- CppMatrix::matrixMultiply(
     matrix(eta, ncol = 1), pp$h_eta_alpha, transA = TRUE
   )
@@ -271,7 +268,7 @@ ocat_suffstat_block <- function(Xblk, y_int, eta, Znui, alpha,
 
   if (q > 0L) {
     Zh <- Znui * sw
-    HXZ <- CppMatrix::matrixMultiply(Xh, Zh, transA = TRUE)
+    HXZ <- wc$XtM[, 2L + K + seq_len(q), drop = FALSE]
     HZZ <- CppMatrix::matrixMultiply(Zh, Zh, transA = TRUE)
     HZT <- CppMatrix::matrixMultiply(Znui, pp$h_eta_alpha, transA = TRUE)
     HZeta_eta <- as.numeric(CppMatrix::matrixMultiply(

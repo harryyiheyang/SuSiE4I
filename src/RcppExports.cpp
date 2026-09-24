@@ -11,9 +11,9 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// cox_suffstat
-Rcpp::List cox_suffstat(const arma::mat& X, const arma::vec& eta, const arma::vec& time, const arma::ivec& status, int n_threads);
-RcppExport SEXP _SuSiE4I_cox_suffstat(SEXP XSEXP, SEXP etaSEXP, SEXP timeSEXP, SEXP statusSEXP, SEXP n_threadsSEXP) {
+// cox_riskset
+Rcpp::List cox_riskset(const arma::mat& X, const arma::vec& eta, const arma::vec& time, const arma::ivec& status, int n_threads);
+RcppExport SEXP _SuSiE4I_cox_riskset(SEXP XSEXP, SEXP etaSEXP, SEXP timeSEXP, SEXP statusSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -22,7 +22,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type time(timeSEXP);
     Rcpp::traits::input_parameter< const arma::ivec& >::type status(statusSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(cox_suffstat(X, eta, time, status, n_threads));
+    rcpp_result_gen = Rcpp::wrap(cox_riskset(X, eta, time, status, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -67,12 +67,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// weighted_crossprod_cpp
+Rcpp::List weighted_crossprod_cpp(const arma::mat& X, const arma::vec& w, const arma::mat& M, int block_size, int n_threads, bool use_omp);
+RcppExport SEXP _SuSiE4I_weighted_crossprod_cpp(SEXP XSEXP, SEXP wSEXP, SEXP MSEXP, SEXP block_sizeSEXP, SEXP n_threadsSEXP, SEXP use_ompSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type M(MSEXP);
+    Rcpp::traits::input_parameter< int >::type block_size(block_sizeSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_omp(use_ompSEXP);
+    rcpp_result_gen = Rcpp::wrap(weighted_crossprod_cpp(X, w, M, block_size, n_threads, use_omp));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_SuSiE4I_cox_suffstat", (DL_FUNC) &_SuSiE4I_cox_suffstat, 5},
+    {"_SuSiE4I_cox_riskset", (DL_FUNC) &_SuSiE4I_cox_riskset, 5},
     {"_SuSiE4I_blockwise_crossprod_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod_cpp, 3},
     {"_SuSiE4I_blockwise_crossprod2_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod2_cpp, 4},
     {"_SuSiE4I_large_scale_cpp", (DL_FUNC) &_SuSiE4I_large_scale_cpp, 4},
+    {"_SuSiE4I_weighted_crossprod_cpp", (DL_FUNC) &_SuSiE4I_weighted_crossprod_cpp, 6},
     {NULL, NULL, 0}
 };
 

@@ -769,21 +769,18 @@ y <- as.numeric(y)
 weights <- as.numeric(weights)
 weights[!is.finite(weights) | weights < 0] <- 0
 
-tilde_X <- X * sqrt(weights)
-XtX <- blockwise_crossprod(tilde_X, n_threads = n_threads,
-                           block_size = block_size)
-rm(tilde_X)
-gc(FALSE)
-
 wy <- weights * y
-Xty <- as.numeric(matrixMultiply(X, matrix(wy, ncol = 1), transA = TRUE))
+Zw <- if (q > 0L) ZI * weights else NULL
+wc <- weighted_crossprod(X, weights, cbind(Zw, wy),
+                         n_threads = n_threads, block_size = block_size)
+XtX <- wc$XtWX
+Xty <- as.numeric(wc$XtM[, q + 1L])
 yty <- sum(weights * y^2)
 yty_raw <- yty
 if (q > 0L) {
-Zw <- ZI * weights
 ZtZ <- matrixMultiply(ZI, Zw, transA = TRUE)
 diag(ZtZ) <- diag(ZtZ) + projection_precision
-ZtX <- matrixMultiply(Zw, X, transA = TRUE)
+ZtX <- t(wc$XtM[, seq_len(q), drop = FALSE])
 Zty <- as.numeric(matrixMultiply(ZI, matrix(wy, ncol = 1), transA = TRUE))
 rm(Zw)
 

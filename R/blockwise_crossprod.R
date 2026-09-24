@@ -49,3 +49,14 @@ reference_blas <- local({
     cached
   }
 })
+
+weighted_crossprod <- function(X, w, M = NULL, n_threads = 1L,
+                               block_size = 10000L) {
+  if (!is.matrix(X) || !is.double(X)) X <- as.matrix(X) + 0
+  M <- if (is.null(M)) matrix(0, nrow(X), 0L) else as.matrix(M) + 0
+  n_threads <- max(1L, as.integer(n_threads))
+  weighted_crossprod_cpp(
+    X, as.numeric(w), M, block_size = max(1L, as.integer(block_size)),
+    n_threads = n_threads, use_omp = n_threads > 1L && reference_blas()
+  )
+}
