@@ -7,7 +7,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
                          w_noncs_var = 0.1,
                          noncs_max_abs_cor = 0.9,
                          include_x_squared = FALSE,
-                         suff_block_size = 10000L,
+                         suff_block_size = NULL,
                          returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   n <- NROW(y)

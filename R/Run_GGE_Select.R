@@ -1,6 +1,6 @@
 Run_GGE_Select <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lenv, Lint, max.iter,
     min.iter, max.eps, susie_para_main, susie_para_int, susie_para_env, verbose = TRUE, n_threads = 1, x_noncs_var = 0.1,
-    w_noncs_var = 0.1, noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, L.init = 1, returnModel = FALSE) {
+    w_noncs_var = 0.1, noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = NULL, L.init = 1, returnModel = FALSE) {
     family <- gaussian()
     run_start <- proc.time()[["elapsed"]]
     n <- NROW(y)

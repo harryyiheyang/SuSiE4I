@@ -55,6 +55,8 @@
 #' @param noncs_max_abs_cor Maximum allowed absolute correlation between a
 #'   non-CS term and applicable refit covariates.
 #' @param suff_block_size Row-block size for sufficient-statistic cross-products.
+#'   Default NULL uses all rows in one block (a single BLAS dsyrk; needs one
+#'   n x p copy of X). Set e.g. 10000L to cap memory.
 #' @param verbose Whether to print iteration diagnostics.
 #' @param returnModel Whether to return the final design matrix.
 #'
@@ -89,7 +91,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     x_noncs_var = 0.1,
                     w_noncs_var = 0.1,
                     noncs_max_abs_cor = 0.9,
-                    suff_block_size = 10000L,
+                    suff_block_size = NULL,
                     verbose = TRUE, returnModel = FALSE) {
 
 if (missing(y) || is.null(y)) stop("y must be provided.")

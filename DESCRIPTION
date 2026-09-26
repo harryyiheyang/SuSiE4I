@@ -1,7 +1,7 @@
 Package: SuSiE4I
 Type: Package
 Title: Fine-Mapping of Gene-Gene and Gene-Environment Interaction Using SuSiE
-Version: 0.1.1
+Version: 0.1.2
 Author: Yihe Yang
 Maintainer: Yihe Yang <yxy1234@case.edu>
 Description: Implements interaction fine-mapping using the Sum of Single Effects (SuSiE) model, 

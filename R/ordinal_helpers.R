@@ -231,7 +231,7 @@ ocat_prob_parts <- function(y_int, eta, alpha, clm_link = "logit",
 ocat_suffstat_block <- function(Xblk, y_int, eta, Znui, alpha,
                                 clm_link = "logit",
                                 n_threads = 1, ridge = 1e-6,
-                                block_size = 10000L) {
+                                block_size = NULL) {
   Xblk <- as.matrix(Xblk)
   n <- nrow(Xblk)
   p <- ncol(Xblk)

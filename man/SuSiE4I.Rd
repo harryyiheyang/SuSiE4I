@@ -30,7 +30,7 @@ SuSiE4I(
   x_noncs_var = 0.1,
   w_noncs_var = 0.1,
   noncs_max_abs_cor = 0.9,
-  suff_block_size = 10000L,
+  suff_block_size = NULL,
   verbose = TRUE,
   returnModel = FALSE
 )
@@ -108,7 +108,9 @@ include `Main_noncs_res`.}
 \item{noncs_max_abs_cor}{Maximum allowed absolute correlation between a
 non-CS term and applicable refit covariates.}
 
-\item{suff_block_size}{Row-block size for sufficient-statistic cross-products.}
+\item{suff_block_size}{Row-block size for sufficient-statistic cross-products.
+Default NULL uses all rows in one block (a single BLAS dsyrk; needs one
+n x p copy of X). Set e.g. 10000L to cap memory.}
 
 \item{verbose}{Whether to print iteration diagnostics.}
 

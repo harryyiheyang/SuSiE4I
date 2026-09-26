@@ -14,7 +14,7 @@ estimate_prior_variance(
   status = NULL,
   mgcv_model = NULL,
   n_threads = 4,
-  suff_block_size = 10000L,
+  suff_block_size = NULL,
   r_thres = 0,
   max_iter = 100L,
   tol = 1e-06
@@ -45,7 +45,9 @@ vector.}
 
 \item{n_threads}{Number of threads used for matrix operations.}
 
-\item{suff_block_size}{Row-block size for sufficient-statistic cross-products.}
+\item{suff_block_size}{Row-block size for sufficient-statistic cross-products.
+Default NULL uses all rows in one block (a single BLAS dsyrk; needs one
+n x p copy of X). Set e.g. 10000L to cap memory.}
 
 \item{r_thres}{Absolute within-chromosome genotype-correlation threshold.
 The default `0` uses the independent-variant estimator. Positive values

@@ -144,7 +144,7 @@ gaussian_ridge_refit <- function(y, pred, penalty_V, dispersion,
                                  offset = NULL, fixed_point = FALSE,
                                  tol = 1e-10, max_iter = 100L,
                                  n_threads = 1L,
-                                 block_size = 10000L) {
+                                 block_size = NULL) {
 y <- as.numeric(y)
 pred <- as.data.frame(pred)
 n <- length(y)

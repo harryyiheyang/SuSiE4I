@@ -4,7 +4,7 @@
 \alias{weighted_crossprod}
 \title{Row-chunked weighted cross-products}
 \usage{
-weighted_crossprod(X, w, M = NULL, n_threads = 1L, block_size = 10000L)
+weighted_crossprod(X, w, M = NULL, n_threads = 1L, block_size = NULL)
 }
 \arguments{
 \item{X}{Numeric matrix.}
@@ -16,7 +16,8 @@ returned unweighted, so pre-multiply by `w` when needed.}
 
 \item{n_threads}{Number of OpenMP threads for the reference-BLAS path.}
 
-\item{block_size}{Number of rows per chunk.}
+\item{block_size}{Number of rows per chunk. Default NULL uses all rows in one
+chunk (a single BLAS dsyrk; needs one n x p copy of X).}
 }
 \value{
 A list with `XtWX` and `XtM`.

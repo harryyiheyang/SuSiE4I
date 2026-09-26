@@ -21,6 +21,7 @@ blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L
       !is.finite(n_threads) || n_threads < 1) {
     stop("n_threads must be a positive numeric scalar.")
   }
+  if (is.null(block_size)) block_size <- 10000L
   if (!is.numeric(block_size) || length(block_size) != 1L ||
       !is.finite(block_size) || block_size < 1) {
     stop("block_size must be a positive numeric scalar.")
@@ -60,13 +61,15 @@ reference_blas <- local({
 #' @param M Optional matrix with `nrow(X)` rows; `crossprod(X, M)` is
 #'   returned unweighted, so pre-multiply by `w` when needed.
 #' @param n_threads Number of OpenMP threads for the reference-BLAS path.
-#' @param block_size Number of rows per chunk.
+#' @param block_size Number of rows per chunk. Default NULL uses all rows in one
+#'   chunk (a single BLAS dsyrk; needs one n x p copy of X).
 #' @return A list with `XtWX` and `XtM`.
 #' @export
 weighted_crossprod <- function(X, w, M = NULL, n_threads = 1L,
-                               block_size = 10000L) {
+                               block_size = NULL) {
   if (!is.matrix(X) || !is.double(X)) X <- as.matrix(X) + 0
   M <- if (is.null(M)) matrix(0, nrow(X), 0L) else as.matrix(M) + 0
+  if (is.null(block_size)) block_size <- nrow(X)
   n_threads <- max(1L, as.integer(n_threads))
   weighted_crossprod_cpp(
     X, as.numeric(w), M, block_size = max(1L, as.integer(block_size)),

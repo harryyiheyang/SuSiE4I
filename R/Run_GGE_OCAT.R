@@ -1,6 +1,6 @@
 Run_GGE_OCAT <- function(X, Z, y, family = NULL, mgcv_model = NULL, Lmain, Lint, max.iter, min.iter, max.eps,
     susie_para_main, susie_para_int, noint_env = NULL, verbose = TRUE, n_threads = 1, L.init = 1, x_noncs_var = 0.1, w_noncs_var = 0.1,
-    noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, returnModel = FALSE) {
+    noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = NULL, returnModel = FALSE) {
     run_start <- proc.time()[["elapsed"]]
     n <- NROW(y)
     p <- ncol(X)
