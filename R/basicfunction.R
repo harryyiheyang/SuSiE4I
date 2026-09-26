@@ -127,7 +127,6 @@ min(as.integer(ceiling(L.init)), as.integer(p))
 }
 
 validate_suff_block_size <- function(suff_block_size) {
-if (is.null(suff_block_size)) return(NULL)
 if (!is.numeric(suff_block_size) || length(suff_block_size) != 1L ||
     !is.finite(suff_block_size) || suff_block_size < 1) {
 stop("suff_block_size must be a positive numeric scalar.")
@@ -699,7 +698,7 @@ list(ZCS = env_cs$design, ZCS_refit = ZCS_refit,
 }
 
 initial_continuous_env <- function(Z, y, Lenv, n_threads = 1,
-                                   block_size = NULL) {
+                                   block_size = 10000L) {
 y <- as.numeric(y)
 if (length(y) != nrow(Z) || any(!is.finite(y))) {
 stop("Continuous environment initialization requires one finite outcome per row of Z.",
@@ -757,14 +756,14 @@ weighted_projected_suffstats <- function(X, y, ZI, weights,
                                          nuisance_precision,
                                          n_threads = 1,
                                          ridge = 1e-8,
-                                         block_size = NULL) {
+                                         block_size = 10000L) {
 if (missing(nuisance_precision)) {
 stop("nuisance_precision must be supplied explicitly for every projection.")
 }
 if (!is.null(ZI)) ZI <- as.matrix(ZI)
 q <- if (is.null(ZI)) 0L else ncol(ZI)
 projection_precision <- align_projection_precision(ZI, nuisance_precision)
-if (!is.null(block_size)) block_size <- max(1L, as.integer(block_size))
+block_size <- max(1L, as.integer(block_size))
 
 y <- as.numeric(y)
 weights <- as.numeric(weights)

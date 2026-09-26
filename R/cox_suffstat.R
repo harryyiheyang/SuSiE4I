@@ -11,7 +11,7 @@
 cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
                                nuisance_precision,
                                n_threads = 1, ridge = 1e-6,
-                               block_size = NULL) {
+                               block_size = 10000L) {
   if (missing(nuisance_precision)) {
     stop("nuisance_precision must be supplied explicitly for every projection.")
   }
