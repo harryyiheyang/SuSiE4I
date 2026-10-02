@@ -381,7 +381,11 @@ if (is.null(n)) n <- if (!is.null(Z)) nrow(Z) else nrow(Xextra)
 out <- data.frame(row.names = seq_len(n))
 if (!is.null(Z) && ncol(Z) > 0L) {
 Zdf <- as.data.frame(Z)
-colnames(Zdf) <- paste0("Z", seq_len(ncol(Z)))
+z_names <- colnames(Z)
+if (is.null(z_names) || any(!nzchar(z_names)) || anyDuplicated(z_names)) {
+z_names <- paste0("Z", seq_len(ncol(Z)))
+}
+colnames(Zdf) <- z_names
 out <- cbind(out, Zdf)
 }
 if (!is.null(Xextra) && ncol(as.matrix(Xextra)) > 0L) {
