@@ -1,6 +1,7 @@
 Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, max.iter, min.iter, max.eps, susie_para_main,
     susie_para_int, noint_env = NULL, verbose = TRUE, n_threads = 1, L.init = 1, x_noncs_var = 0.1, w_noncs_var = 0.1, noncs_max_abs_cor = 0.9,
-    include_x_squared = FALSE, suff_block_size = 10000L, returnModel = FALSE) {
+    include_x_squared = FALSE, suff_block_size = 10000L, z_groups = NULL, z_support = NULL, min_group_int_obs = 100L,
+    returnModel = FALSE) {
     family <- gaussian()
     run_start <- proc.time()[["elapsed"]]
     n <- NROW(y)
@@ -98,7 +99,8 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
             }
         }
         XCS_W <- XCS_refit
-        W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
+        W <- get_pairwise_interactions(z_groups = z_groups, z_support = z_support,
+            min_group_int_obs = min_group_int_obs, XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
             FALSE
         else include_x_squared)
         WCS <- NULL
@@ -113,10 +115,9 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
                 block_size = suff_block_size)
             Wty <- as.vector(matrixMultiply(matrix(rW, nrow = 1L), W))
             yty4W <- sum(rW^2)
-            fitW <- .fit_susie_stage(structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = n, L = Lint),
+            fitW <- .fit_susie_stage(groups = attr(W, "groups"), structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = n, L = Lint),
                 susie_para = susie_para_int, stage = "int", iter = iter, min.iter = min.iter, gaussian = TRUE, residual_variance = phi0)
-            CSdt_w <- summary(fitW)$vars
-            cs_indices_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
+            cs_indices_w <- susie_cs_list(fitW)$index
             w_component <- build_component_design_from_fit(W, fitW, "Int_CS")
             WCS <- w_component$design
             WCS_refit <- WCS

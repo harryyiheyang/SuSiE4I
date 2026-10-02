@@ -26,6 +26,22 @@
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
+#' @param z_groups Optional grouping of `Z` columns into factor variables such
+#'   as haplotypes. Either a named list whose elements give the column names or
+#'   indices of each factor's indicator columns, or a vector with one label per
+#'   `Z` column (`NA` for ungrouped columns). Grouped columns stay unpenalized
+#'   in `Z`. In the interaction stage each factor's level columns times a main
+#'   credible-set column, and each pair of different factors' level products,
+#'   enter as one group that is selected jointly by a group SuSiE with prior
+#'   weight `1 / G` over groups; interactions within a factor are never formed.
+#'   Supported when `Z` is given and `select_env = FALSE`. Use reference coding
+#'   (drop one level). `interaction_discoveries` then lists every level column
+#'   of a selected group with the group PIP and the per-level posterior mean
+#'   and SD (`PostMean`, `PostSD`), which show which levels interact.
+#' @param min_group_int_obs Minimum number of observations carrying a factor
+#'   level (for level by credible-set columns) or both levels (for level by
+#'   level columns) for that interaction column to be kept. Carriers are the
+#'   non-zero entries of the unscaled `Z` columns.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -80,6 +96,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
+                    z_groups = NULL, min_group_int_obs = 100L,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,
@@ -112,9 +129,18 @@ if (length(y) != n) stop("Length(y) must equal nrow(X).")
 if (scale_data) X <- large_scale(X)
 if (is.null(colnames(X))) colnames(X) <- paste0("X", seq_len(ncol(X)))
 
+if (!is.null(z_groups) && is.null(Z)) stop("z_groups requires Z.")
 if (!is.null(Z)) {
 Z <- as.matrix(Z)
 if (nrow(Z) != n) stop("nrow(Z) must equal nrow(X).")
+if (is.null(colnames(Z))) colnames(Z) <- paste0("Z", seq_len(ncol(Z)))
+z_support <- NULL
+if (!is.null(z_groups)) {
+if (select_env) stop("z_groups is not supported with select_env = TRUE.")
+z_groups <- normalize_z_groups(z_groups, Z)
+check_z_group_coding(Z, z_groups)
+z_support <- !is.na(Z) & Z != 0
+}
 if (scale_data) Z <- large_scale(Z)
 if (is.null(colnames(Z))) colnames(Z) <- paste0("Z", seq_len(ncol(Z)))
 bad_z <- grepl("^Main_", colnames(Z))
@@ -186,7 +212,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_Cox(
-X = X, Z = Z, y = y, status = status,
+X = X, Z = Z, z_groups = z_groups, z_support = z_support,
+min_group_int_obs = min_group_int_obs, y = y, status = status,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -263,7 +290,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_OCAT(
-X = X, Z = Z, y = y, family = ocat_family,
+X = X, Z = Z, z_groups = z_groups, z_support = z_support,
+min_group_int_obs = min_group_int_obs, y = y, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
@@ -314,7 +342,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_CLM(
-X = X, Z = Z, y = y, clm_link = ordinal_link,
+X = X, Z = Z, z_groups = z_groups, z_support = z_support,
+min_group_int_obs = min_group_int_obs, y = y, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -384,7 +413,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE(
-X = X, Z = Z, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+X = X, Z = Z, z_groups = z_groups, z_support = z_support,
+min_group_int_obs = min_group_int_obs, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -437,7 +467,8 @@ returnModel = returnModel
 ))
 }
 Run_GGE_GLM(
-X = X, Z = Z, y = y, family = family,
+X = X, Z = Z, z_groups = z_groups, z_support = z_support,
+min_group_int_obs = min_group_int_obs, y = y, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,

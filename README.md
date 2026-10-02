@@ -112,6 +112,24 @@ score-based sufficient statistics, SuSiE main-effect fitting, interaction
 construction from selected credible sets, SuSiE interaction fitting, and a
 final Cox partial-likelihood refit on the selected summaries.
 
+## Grouped Factors in Z (Haplotypes)
+
+Factor-coded covariates such as haplotypes can be passed in `Z` as reference
+coded indicator columns together with `z_groups`, for example
+`z_groups = list(HapA = c("HA_a1", "HA_a2"), HapB = c("HB_b1"))`. The factors
+stay unpenalized in `Z`. In the interaction stage SuSiE4I forms, for each
+factor, the block of its level columns times each main credible-set column,
+and, for each pair of different factors, the block of level-by-level products.
+Interactions within a factor are never formed. Each block is one group, and a
+group SuSiE on the same sufficient statistics selects whole groups: within a
+group the effects have prior `N(0, V I)`, and the prior inclusion weight is
+`1 / G` over the `G` candidate groups (ungrouped interaction columns are
+groups of size one). A level column is dropped from its block when fewer than
+`min_group_int_obs` observations carry that level (or both levels for a
+level-by-level product). `interaction_discoveries` reports every level column
+of a selected group with the group PIP and its posterior mean and SD, so the
+interacting levels can be read off directly. See `example/example_group_int.R`.
+
 ## Refit Summaries
 
 Selected credible-set summaries are refit jointly in the outcome model. Optional
