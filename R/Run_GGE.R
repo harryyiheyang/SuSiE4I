@@ -1,6 +1,7 @@
 Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, max.iter, min.iter, max.eps, susie_para_main,
     susie_para_int, noint_env = NULL, verbose = TRUE, n_threads = 1, L.init = 1, x_noncs_var = 0.1, w_noncs_var = 0.1, noncs_max_abs_cor = 0.9,
-    include_x_squared = FALSE, suff_block_size = 10000L, returnModel = FALSE) {
+    include_x_squared = FALSE, suff_block_size = 10000L, groupint_ind = NULL, int_suggested_coverage = NULL,
+    returnModel = FALSE) {
     family <- gaussian()
     run_start <- proc.time()[["elapsed"]]
     n <- NROW(y)
@@ -100,7 +101,8 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
         XCS_W <- XCS_refit
         W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
             FALSE
-        else include_x_squared)
+        else include_x_squared,
+            groupint_ind = groupint_ind)
         WCS <- NULL
         WCS_refit <- NULL
         if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
@@ -114,7 +116,7 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
             Wty <- as.vector(matrixMultiply(matrix(rW, nrow = 1L), W))
             yty4W <- sum(rW^2)
             fitW <- .fit_susie_stage(structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = n, L = Lint),
-                susie_para = susie_para_int, stage = "int", iter = iter, min.iter = min.iter, gaussian = TRUE, residual_variance = phi0)
+                susie_para = susie_para_int, stage = "int", suggested_coverage = int_suggested_coverage, iter = iter, min.iter = min.iter, gaussian = TRUE, residual_variance = phi0)
             CSdt_w <- summary(fitW)$vars
             cs_indices_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
             w_component <- build_component_design_from_fit(W, fitW, "Int_CS")
@@ -213,6 +215,7 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
     MainIndex <- safe_add_p(MainIndex, G)
     IntIndex <- Identifying_IntEffect(fitW, colnames(W))
     IntIndex <- filter_noncs_interactions(IntIndex)
+    IntIndex <- annotate_groupint_interactions(IntIndex, colnames(Z), groupint_ind)
     IntIndex <- safe_add_p(IntIndex, G)
     if (verbose) {
         plot(g, type = "o", col = "black", pch = 16, xlab = "Iteration", ylab = "Max Parameter Change", main = "Convergence Trace (GLM)")

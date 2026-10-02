@@ -8,6 +8,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
                          noncs_max_abs_cor = 0.9,
                          include_x_squared = FALSE,
                          suff_block_size = 10000L,
+                         groupint_ind = NULL, int_suggested_coverage = NULL,
                          returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   n <- NROW(y)
@@ -126,7 +127,8 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
       XCS_W <- XCS_refit
       W <- get_pairwise_interactions(
         XCS_W, Z = if (nZ > 0L) Z else NULL, noint_env = noint_env,
-        include_x_squared = if (main_no_cs) FALSE else include_x_squared
+        include_x_squared = if (main_no_cs) FALSE else include_x_squared,
+        groupint_ind = groupint_ind
       )
       if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
         W <- NULL
@@ -146,7 +148,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
           XtX = ssW$XtX, Xty = ssW$Xty, yty = ssW$yty,
           n = n, L = Lint
         ),
-        susie_para = susie_para_int, stage = "int",
+        susie_para = susie_para_int, stage = "int", suggested_coverage = int_suggested_coverage,
         iter = iter, min.iter = min.iter
       )
 
@@ -231,6 +233,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
   MainIndex <- safe_add_p(MainIndex, G)
   IntIndex <- Identifying_IntEffect(fitW, colnames(W))
   IntIndex <- filter_noncs_interactions(IntIndex)
+  IntIndex <- annotate_groupint_interactions(IntIndex, colnames(Z), groupint_ind)
   IntIndex <- safe_add_p(IntIndex, G)
 
   if (verbose) {

@@ -1,5 +1,14 @@
 get_pairwise_interactions <- function(W, Z = NULL, noint_env = NULL,
-                                      include_x_squared = FALSE) {
+                                      include_x_squared = FALSE,
+                                      groupint_ind = NULL) {
+if (!is.null(groupint_ind) && !is.null(Z)) {
+ZZ <- get_groupint_interactions(Z, groupint_ind)
+WZ <- get_pairwise_interactions(W, Z = Z, noint_env = noint_env,
+                                include_x_squared = include_x_squared)
+if (is.null(WZ)) return(ZZ)
+if (is.null(ZZ)) return(WZ)
+return(cbind(WZ, ZZ))
+}
 if (is.null(W)) return(NULL)
 W <- as.matrix(W)
 if (!is.logical(include_x_squared) || length(include_x_squared) != 1L ||
@@ -68,13 +77,56 @@ out
 }
 
 susie_cs_list <- function(fit) {
-if (is.null(fit) || is.null(fit$sets$cs) || !length(fit$sets$cs)) {
-return(list(index = integer(0), vars = list()))
-}
+index <- integer(0)
+vars <- list()
+if (!is.null(fit) && !is.null(fit$sets$cs) && length(fit$sets$cs)) {
 index <- as.integer(fit$sets$cs_index)
 vars <- lapply(fit$sets$cs, as.integer)
+}
+if (!is.null(fit$suggested) && length(fit$suggested$index)) {
+index <- c(index, fit$suggested$index)
+vars <- c(vars, fit$suggested$vars)
+}
+if (!length(index)) return(list(index = integer(0), vars = list()))
 ord <- order(index)
 list(index = index[ord], vars = vars[ord])
+}
+
+# Interaction components that did not form a CS but were not killed by SuSiE
+# (prior variance V above prior_tol) all enter the refit. Each one is purified
+# like a CS: take its coverage set at suggested_coverage and keep the members
+# with |r| >= min_abs_corr to the lead; the refit term is built from that
+# purified set. A component is reported as "suggested" only when the purified
+# set is the lead alone and the lead's alpha is at least suggested_coverage.
+find_suggested_components <- function(fit, XtX, min_abs_corr,
+                                      suggested_coverage, prior_tol = 1e-9) {
+out <- list(index = integer(0), vars = list(), coverage = numeric(0),
+            report = logical(0))
+L <- nrow(fit$alpha)
+if (is.null(L) || !L) return(out)
+XtX <- as.matrix(XtX)
+d <- sqrt(pmax(diag(XtX), 1e-12))
+cs_index <- if (is.null(fit$sets$cs_index)) integer(0) else as.integer(fit$sets$cs_index)
+taken <- unlist(lapply(fit$sets$cs, as.integer))
+for (l in setdiff(seq_len(L), cs_index)) {
+if (!is.finite(fit$V[l]) || fit$V[l] <= prior_tol) next
+o <- order(fit$alpha[l, ], decreasing = TRUE)
+lead <- o[1L]
+if (lead %in% taken) next
+k <- which(cumsum(fit$alpha[l, o]) >= suggested_coverage)[1L]
+if (is.na(k)) k <- length(o)
+S <- o[seq_len(k)]
+S <- S[!(S %in% taken)]
+r <- XtX[lead, S] / (d[lead] * d[S])
+P <- S[abs(r) >= min_abs_corr]
+out$index <- c(out$index, l)
+out$vars <- c(out$vars, list(P))
+out$coverage <- c(out$coverage, sum(fit$alpha[l, P]))
+out$report <- c(out$report,
+                length(P) == 1L && fit$alpha[l, lead] >= suggested_coverage)
+taken <- c(taken, P)
+}
+out
 }
 
 Identifying_CSEffect <- function(fit, nam, prefix) {
@@ -89,6 +141,17 @@ data.frame(Index = a, Variable = unname(nam[a]), CS = paste0(prefix, i),
 })
 out <- do.call(rbind, S)
 rownames(out) <- NULL
+if (!is.null(fit$suggested)) {
+comp <- as.integer(sub(prefix, "", out$CS, fixed = TRUE))
+sug <- match(comp, fit$suggested$index)
+cs_cov <- as.numeric(fit$sets$coverage)[match(comp, as.integer(fit$sets$cs_index))]
+out$InCS <- is.na(sug)
+out$Coverage <- ifelse(is.na(sug), cs_cov, fit$suggested$coverage[sug])
+# Unreported non-CS components stay in the refit but are not discoveries.
+out <- out[is.na(sug) | fit$suggested$report[sug], , drop = FALSE]
+rownames(out) <- NULL
+if (!nrow(out)) return(NULL)
+}
 out
 }
 
@@ -372,7 +435,11 @@ if (is.null(n)) n <- if (!is.null(Z)) nrow(Z) else nrow(Xextra)
 out <- data.frame(row.names = seq_len(n))
 if (!is.null(Z) && ncol(Z) > 0L) {
 Zdf <- as.data.frame(Z)
-colnames(Zdf) <- paste0("Z", seq_len(ncol(Z)))
+z_names <- colnames(Z)
+if (is.null(z_names) || any(!nzchar(z_names)) || anyDuplicated(z_names)) {
+z_names <- paste0("Z", seq_len(ncol(Z)))
+}
+colnames(Zdf) <- z_names
 out <- cbind(out, Zdf)
 }
 if (!is.null(Xextra) && ncol(as.matrix(Xextra)) > 0L) {
@@ -925,7 +992,8 @@ args
 
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
-                             residual_variance = NULL) {
+                             residual_variance = NULL,
+                             suggested_coverage = NULL) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
@@ -940,6 +1008,13 @@ if (is.null(fit$sets$requested_coverage) ||
     !isTRUE(all.equal(as.numeric(fit$sets$requested_coverage),
                      fit$cs_config$coverage))) {
 stop("The fitted SuSiE requested coverage does not match its effective CS configuration.")
+}
+if (!is.null(suggested_coverage)) {
+fit$suggested <- find_suggested_components(
+fit, structural$XtX,
+min_abs_corr = fit$cs_config$min_abs_corr,
+suggested_coverage = suggested_coverage
+)
 }
 fit
 }
@@ -983,6 +1058,10 @@ extract_direction_table <- function(fit, joint_coef) {
       if (!is.na(z1) && !is.na(z2) && abs(z1) >= abs(z2)) { main_term <- parts[1]; env_term <- parts[2]; main_z <- z1; env_z <- z2
       } else if (!is.na(z2)) { main_term <- parts[2]; env_term <- parts[1]; main_z <- z2; env_z <- z1
       } else { main_term <- parts[1]; env_term <- parts[2]; main_z <- z1; env_z <- z2 }
+    } else if (!any(grepl("^Main_", parts))) {
+      main_term <- parts[1]; env_term <- parts[2]
+      main_z    <- if (main_term %in% rownames(JC)) JC[main_term, 3] else NA_real_
+      env_z     <- if (env_term  %in% rownames(JC)) JC[env_term,  3] else NA_real_
     } else {
       main_pos  <- grep("^Main_", parts)
       main_term <- parts[main_pos]

@@ -19,6 +19,8 @@ SuSiE4I(
   select_env = FALSE,
   L_env = 10,
   noint_env = NULL,
+  groupint_ind = NULL,
+  int_suggested_coverage = NULL,
   include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
@@ -60,7 +62,8 @@ formal fit; intermediate joint refits use the exact ridge solver.}
 
 \item{L_main}{Number of main-effect SuSiE components.}
 
-\item{L_int}{Number of interaction SuSiE components.}
+\item{L_int}{Number of interaction SuSiE components. When `groupint_ind` is
+given and `L_int` is not supplied, 10 is used.}
 
 \item{select_env}{Whether to fine-map columns of `Z`. Supported for all
 outcome paths.}
@@ -68,6 +71,28 @@ outcome paths.}
 \item{L_env}{Number of environmental SuSiE components.}
 
 \item{noint_env}{Indices of `Z` columns excluded from interaction construction.}
+
+\item{groupint_ind}{Optional list of at least two groups of `Z` columns,
+given as column indices or names (for example the indicator columns of
+each haplotype; a group may hold a single column). For every pair of
+groups, each column of one group times each column of the other is added
+to the interaction design as its own candidate; columns within a group are
+never paired, and a product with `crossprod(x) / n < 1e-8` is skipped.
+A column may belong to only one group. `Z` by main-effect interactions
+still follow `noint_env`. `interaction_discoveries` gains `Group1`,
+`Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
+(levels) on each side. Not supported with `select_env = TRUE`.}
+
+\item{int_suggested_coverage}{Coverage used for interaction-stage
+components that do not form a credible set. Every such component that
+SuSiE did not kill (prior variance above zero) enters the refit; its
+refit term is built from its coverage set at this level, purified by
+dropping members with absolute correlation below `min_abs_corr` to the
+lead. It is reported in `interaction_discoveries` as suggested
+(`InCS = FALSE`) only when the purified set is the lead alone with
+posterior probability at least this value; `Coverage` gives the CS
+coverage or the purified coverage. `NULL` (default) uses 0.8 when
+`groupint_ind` is given and disables this otherwise; `FALSE` disables it.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}

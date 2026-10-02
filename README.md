@@ -112,6 +112,34 @@ score-based sufficient statistics, SuSiE main-effect fitting, interaction
 construction from selected credible sets, SuSiE interaction fitting, and a
 final Cox partial-likelihood refit on the selected summaries.
 
+## Interactions Between Groups of Z Columns (Haplotypes)
+
+Factor-coded covariates such as haplotypes can be passed in `Z` as indicator
+columns, with `groupint_ind` listing which columns form each group, for
+example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"), HapB = "HB_b1")`
+(indices or names; at least two groups; a group may hold one column; no
+column in two groups). For every pair of groups, each column of one group
+times each column of the other becomes its own interaction candidate, and
+columns within a group are never paired. Products with `crossprod(x) / n`
+below `1e-8` are skipped. Interactions of `Z` with the main-effect credible
+sets are unchanged and follow `noint_env`. Selection in the interaction stage
+is unchanged (`susieR::susie_ss`), and `interaction_discoveries` names the
+group and column on each side of a selected interaction (`Group1`, `Term1`,
+`Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
+be read off directly. See `example/example_group_int.R`.
+
+Sparse level-by-level cells often leave the true interaction with posterior
+probability above 0.8 but below the 95% needed for a credible set. When
+`groupint_ind` is given, every interaction component that SuSiE did not kill
+(prior variance above zero) enters the refit even without a credible set. Its
+refit term is built from its coverage set at `int_suggested_coverage`
+(default 0.8), purified by dropping members with absolute correlation below
+`min_abs_corr` to the lead. Such a component is reported as *suggested*
+(`InCS = FALSE`, with its `Coverage`) only when the purified set is the lead
+alone with posterior probability at least `int_suggested_coverage`; the others
+only adjust the refit. Main effects still require a credible set. With `groupint_ind`, `L_int`
+defaults to 10.
+
 ## Refit Summaries
 
 Selected credible-set summaries are refit jointly in the outcome model. Optional
