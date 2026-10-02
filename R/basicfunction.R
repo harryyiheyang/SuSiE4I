@@ -77,13 +77,51 @@ out
 }
 
 susie_cs_list <- function(fit) {
-if (is.null(fit) || is.null(fit$sets$cs) || !length(fit$sets$cs)) {
-return(list(index = integer(0), vars = list()))
-}
+index <- integer(0)
+vars <- list()
+if (!is.null(fit) && !is.null(fit$sets$cs) && length(fit$sets$cs)) {
 index <- as.integer(fit$sets$cs_index)
 vars <- lapply(fit$sets$cs, as.integer)
+}
+if (!is.null(fit$suggested) && length(fit$suggested$index)) {
+index <- c(index, fit$suggested$index)
+vars <- c(vars, as.list(fit$suggested$lead))
+}
+if (!length(index)) return(list(index = integer(0), vars = list()))
 ord <- order(index)
 list(index = index[ord], vars = vars[ord])
+}
+
+# Components that did not form a CS but are kept as "suggested": the prior
+# variance is not shrunk to zero, the component's lbf is positive, and after
+# purifying its coverage set (dropping members with |r| < min_abs_corr to the
+# lead) only the lead remains, with alpha of at least suggested_coverage.
+find_suggested_components <- function(fit, XtX, coverage, min_abs_corr,
+                                      suggested_coverage, prior_tol = 1e-9) {
+out <- list(index = integer(0), lead = integer(0), coverage = numeric(0))
+L <- nrow(fit$alpha)
+if (is.null(L) || !L) return(out)
+XtX <- as.matrix(XtX)
+d <- sqrt(pmax(diag(XtX), 1e-12))
+cs_index <- if (is.null(fit$sets$cs_index)) integer(0) else as.integer(fit$sets$cs_index)
+taken <- unlist(lapply(fit$sets$cs, as.integer))
+for (l in setdiff(seq_len(L), cs_index)) {
+if (!is.finite(fit$V[l]) || fit$V[l] <= prior_tol) next
+if (!is.finite(fit$lbf[l]) || fit$lbf[l] <= 0) next
+o <- order(fit$alpha[l, ], decreasing = TRUE)
+lead <- o[1L]
+if (fit$alpha[l, lead] < suggested_coverage || lead %in% taken) next
+k <- which(cumsum(fit$alpha[l, o]) >= coverage)[1L]
+if (is.na(k)) k <- length(o)
+S <- o[seq_len(k)]
+r <- XtX[lead, S] / (d[lead] * d[S])
+if (sum(abs(r) >= min_abs_corr) != 1L) next
+out$index <- c(out$index, l)
+out$lead <- c(out$lead, lead)
+out$coverage <- c(out$coverage, fit$alpha[l, lead])
+taken <- c(taken, lead)
+}
+out
 }
 
 Identifying_CSEffect <- function(fit, nam, prefix) {
@@ -98,6 +136,13 @@ data.frame(Index = a, Variable = unname(nam[a]), CS = paste0(prefix, i),
 })
 out <- do.call(rbind, S)
 rownames(out) <- NULL
+if (!is.null(fit$suggested)) {
+comp <- as.integer(sub(prefix, "", out$CS, fixed = TRUE))
+sug <- match(comp, fit$suggested$index)
+cs_cov <- as.numeric(fit$sets$coverage)[match(comp, as.integer(fit$sets$cs_index))]
+out$InCS <- is.na(sug)
+out$Coverage <- ifelse(is.na(sug), cs_cov, fit$suggested$coverage[sug])
+}
 out
 }
 
@@ -938,7 +983,8 @@ args
 
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
-                             residual_variance = NULL) {
+                             residual_variance = NULL,
+                             suggested_coverage = NULL) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
@@ -953,6 +999,13 @@ if (is.null(fit$sets$requested_coverage) ||
     !isTRUE(all.equal(as.numeric(fit$sets$requested_coverage),
                      fit$cs_config$coverage))) {
 stop("The fitted SuSiE requested coverage does not match its effective CS configuration.")
+}
+if (!is.null(suggested_coverage)) {
+fit$suggested <- find_suggested_components(
+fit, structural$XtX, coverage = fit$cs_config$coverage,
+min_abs_corr = fit$cs_config$min_abs_corr,
+suggested_coverage = suggested_coverage
+)
 }
 fit
 }

@@ -20,6 +20,7 @@ SuSiE4I(
   L_env = 10,
   noint_env = NULL,
   groupint_ind = NULL,
+  int_suggested_coverage = NULL,
   include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
@@ -61,7 +62,8 @@ formal fit; intermediate joint refits use the exact ridge solver.}
 
 \item{L_main}{Number of main-effect SuSiE components.}
 
-\item{L_int}{Number of interaction SuSiE components.}
+\item{L_int}{Number of interaction SuSiE components. When `groupint_ind` is
+given and `L_int` is not supplied, 10 is used.}
 
 \item{select_env}{Whether to fine-map columns of `Z`. Supported for all
 outcome paths.}
@@ -80,6 +82,17 @@ A column may belong to only one group. `Z` by main-effect interactions
 still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 (levels) on each side. Not supported with `select_env = TRUE`.}
+
+\item{int_suggested_coverage}{Interaction-stage components that do not
+form a credible set are kept as "suggested" when SuSiE did not shrink
+their prior variance to zero, their lbf is positive, and after purifying
+their coverage set (dropping members with absolute correlation below
+`min_abs_corr` to the lead) only the lead remains with posterior
+probability at least this value. Suggested components enter the refit
+like credible sets and are reported in `interaction_discoveries` with
+`InCS = FALSE`; `Coverage` gives the CS coverage or the lead's posterior
+probability. `NULL` (default) uses 0.8 when `groupint_ind` is given and
+disables suggestions otherwise; `FALSE` disables them.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}

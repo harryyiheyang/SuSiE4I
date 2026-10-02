@@ -21,7 +21,8 @@
 #' @param scale_data Whether to standardize `X` and `Z`.
 #' @param n_threads Number of threads used for cross-products.
 #' @param L_main Number of main-effect SuSiE components.
-#' @param L_int Number of interaction SuSiE components.
+#' @param L_int Number of interaction SuSiE components. When `groupint_ind` is
+#'   given and `L_int` is not supplied, 10 is used.
 #' @param select_env Whether to fine-map columns of `Z`. Supported for all
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
@@ -36,6 +37,16 @@
 #'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 #'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 #'   (levels) on each side. Not supported with `select_env = TRUE`.
+#' @param int_suggested_coverage Interaction-stage components that do not
+#'   form a credible set are kept as "suggested" when SuSiE did not shrink
+#'   their prior variance to zero, their lbf is positive, and after purifying
+#'   their coverage set (dropping members with absolute correlation below
+#'   `min_abs_corr` to the lead) only the lead remains with posterior
+#'   probability at least this value. Suggested components enter the refit
+#'   like credible sets and are reported in `interaction_discoveries` with
+#'   `InCS = FALSE`; `Coverage` gives the CS coverage or the lead's posterior
+#'   probability. `NULL` (default) uses 0.8 when `groupint_ind` is given and
+#'   disables suggestions otherwise; `FALSE` disables them.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -90,7 +101,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
-                    groupint_ind = NULL,
+                    groupint_ind = NULL, int_suggested_coverage = NULL,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,
@@ -140,6 +151,9 @@ warning("Renaming Z column(s) starting with 'Main_' to 'MaIn_' to avoid collisio
 colnames(Z)[bad_z] <- sub("^Main_", "MaIn_", colnames(Z)[bad_z])
 }
 }
+
+if (!is.null(groupint_ind) && missing(L_int)) L_int <- 10
+int_suggested_coverage <- resolve_int_suggested_coverage(int_suggested_coverage, groupint_ind)
 
 is_binary_response <- function(v) {
 vv <- unique(stats::na.omit(v))
@@ -203,7 +217,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_Cox(
-X = X, Z = Z, groupint_ind = groupint_ind, y = y, status = status,
+X = X, Z = Z, groupint_ind = groupint_ind,
+int_suggested_coverage = int_suggested_coverage, y = y, status = status,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -280,7 +295,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_OCAT(
-X = X, Z = Z, groupint_ind = groupint_ind, y = y, family = ocat_family,
+X = X, Z = Z, groupint_ind = groupint_ind,
+int_suggested_coverage = int_suggested_coverage, y = y, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
@@ -331,7 +347,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_CLM(
-X = X, Z = Z, groupint_ind = groupint_ind, y = y, clm_link = ordinal_link,
+X = X, Z = Z, groupint_ind = groupint_ind,
+int_suggested_coverage = int_suggested_coverage, y = y, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -401,7 +418,8 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE(
-X = X, Z = Z, groupint_ind = groupint_ind, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+X = X, Z = Z, groupint_ind = groupint_ind,
+int_suggested_coverage = int_suggested_coverage, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -454,7 +472,8 @@ returnModel = returnModel
 ))
 }
 Run_GGE_GLM(
-X = X, Z = Z, groupint_ind = groupint_ind, y = y, family = family,
+X = X, Z = Z, groupint_ind = groupint_ind,
+int_suggested_coverage = int_suggested_coverage, y = y, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,

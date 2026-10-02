@@ -128,6 +128,18 @@ group and column on each side of a selected interaction (`Group1`, `Term1`,
 `Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
 be read off directly. See `example/example_group_int.R`.
 
+Sparse level-by-level cells often leave the true interaction with posterior
+probability above 0.8 but below the 95% needed for a credible set. When
+`groupint_ind` is given, interaction components that did not form a credible
+set are therefore also kept as *suggested* if SuSiE did not shrink their prior
+variance to zero, their lbf is positive, and after purifying the coverage set
+(dropping members with absolute correlation below `min_abs_corr` to the lead)
+only the lead remains with posterior probability at least
+`int_suggested_coverage` (default 0.8). Suggested components enter the refit
+like credible sets and are reported with `InCS = FALSE` and their `Coverage`.
+Main effects still require a credible set. With `groupint_ind`, `L_int`
+defaults to 10.
+
 ## Refit Summaries
 
 Selected credible-set summaries are refit jointly in the outcome model. Optional

@@ -8,7 +8,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
                          noncs_max_abs_cor = 0.9,
                          include_x_squared = FALSE,
                          suff_block_size = 10000L,
-                         groupint_ind = NULL,
+                         groupint_ind = NULL, int_suggested_coverage = NULL,
                          returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   n <- NROW(y)
@@ -148,7 +148,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
           XtX = ssW$XtX, Xty = ssW$Xty, yty = ssW$yty,
           n = n, L = Lint
         ),
-        susie_para = susie_para_int, stage = "int",
+        susie_para = susie_para_int, stage = "int", suggested_coverage = int_suggested_coverage,
         iter = iter, min.iter = min.iter
       )
 

@@ -26,9 +26,11 @@ y <- 0.15 * xs[, 10] - 0.12 * xs[, 50] + 0.2 * DA[, "HA_a2"] + 0.1 * age +
 fit <- SuSiE4I(
   X = X, Z = Z, y = y, family = "gaussian",
   groupint_ind = list(HapA = colnames(DA), HapB = colnames(DB)),
-  L_main = 5, L_int = 5, verbose = FALSE
+  L_main = 5, verbose = FALSE
 )
 
 fit$main_discoveries
 # Each selected interaction names the specific levels involved.
-fit$interaction_discoveries[, c("Pair", "CS", "PIP", "Pvalue")]
+# InCS = FALSE marks suggested (non-CS) components; Coverage is the CS
+# coverage or the lead's posterior probability.
+fit$interaction_discoveries[, c("Pair", "CS", "PIP", "InCS", "Coverage", "Pvalue")]

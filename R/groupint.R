@@ -75,3 +75,12 @@ IntIndex$Term2 <- t2
 IntIndex$Pair <- paste(label(g1, t1), label(g2, t2), sep = " x ")
 IntIndex
 }
+
+resolve_int_suggested_coverage <- function(x, groupint_ind) {
+if (is.null(x)) return(if (is.null(groupint_ind)) NULL else 0.8)
+if (isFALSE(x)) return(NULL)
+if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0 || x > 1) {
+stop("int_suggested_coverage must be NULL, FALSE, or a number in (0, 1].")
+}
+as.numeric(x)
+}
