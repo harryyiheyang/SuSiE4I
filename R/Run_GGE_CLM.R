@@ -8,8 +8,9 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
                          noncs_max_abs_cor = 0.9,
                          include_x_squared = FALSE,
                          suff_block_size = 10000L,
-                         z_groups = NULL, z_support = NULL, min_group_int_obs = 100L,
-    returnModel = FALSE) {
+                         z_groups = NULL, z_support = NULL,
+                         min_group_int_obs = 100L,
+                         returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   n <- NROW(y)
   p <- ncol(X)
@@ -125,10 +126,11 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
       eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 
       XCS_W <- XCS_refit
-      W <- get_pairwise_interactions(z_groups = z_groups, z_support = z_support,
-            min_group_int_obs = min_group_int_obs, 
+      W <- get_pairwise_interactions(
         XCS_W, Z = if (nZ > 0L) Z else NULL, noint_env = noint_env,
-        include_x_squared = if (main_no_cs) FALSE else include_x_squared
+        include_x_squared = if (main_no_cs) FALSE else include_x_squared,
+        z_groups = z_groups, z_support = z_support,
+        min_group_int_obs = min_group_int_obs
       )
       if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
         W <- NULL
@@ -143,7 +145,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
         n_threads = n_threads, ridge = ridge,
         block_size = suff_block_size
       )
-      fitW <- .fit_susie_stage(groups = attr(W, "groups"), 
+      fitW <- .fit_susie_stage(
         structural = list(
           XtX = ssW$XtX, Xty = ssW$Xty, yty = ssW$yty,
           n = n, L = Lint
@@ -152,7 +154,8 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
         iter = iter, min.iter = min.iter
       )
 
-      cs_w <- susie_cs_list(fitW)$index
+      CSdt_w <- summary(fitW)$vars
+      cs_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
       w_component <- build_component_design_from_fit(
         W, fitW, "Int_CS"
       )
@@ -232,6 +235,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
   MainIndex <- safe_add_p(MainIndex, G)
   IntIndex <- Identifying_IntEffect(fitW, colnames(W))
   IntIndex <- filter_noncs_interactions(IntIndex)
+  IntIndex <- annotate_z_group_interactions(IntIndex, colnames(Z), z_groups)
   IntIndex <- safe_add_p(IntIndex, G)
 
   if (verbose) {

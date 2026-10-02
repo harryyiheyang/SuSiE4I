@@ -122,10 +122,10 @@ Run_GGE_OCAT <- function(X, Z, y, family = NULL, mgcv_model = NULL, Lmain, Lint,
             }
         }
         XCS_W <- XCS_refit
-        W <- get_pairwise_interactions(z_groups = z_groups, z_support = z_support,
-            min_group_int_obs = min_group_int_obs, XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
+        W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
             FALSE
-        else include_x_squared)
+        else include_x_squared,
+            z_groups = z_groups, z_support = z_support, min_group_int_obs = min_group_int_obs)
         WCS <- NULL
         WCS_refit <- NULL
         if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
@@ -140,9 +140,10 @@ Run_GGE_OCAT <- function(X, Z, y, family = NULL, mgcv_model = NULL, Lmain, Lint,
             WtW <- ssW$XtX
             Wty <- ssW$Xty
             yty4W <- ssW$yty
-            fitW <- .fit_susie_stage(groups = attr(W, "groups"), structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = max(0.95 * n, work$n_eff), L = Lint),
+            fitW <- .fit_susie_stage(structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = max(0.95 * n, work$n_eff), L = Lint),
                 susie_para = susie_para_int, stage = "int", iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
-            cs_indices_w <- susie_cs_list(fitW)$index
+            CSdt_w <- summary(fitW)$vars
+            cs_indices_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
             w_component <- build_component_design_from_fit(W, fitW, "Int_CS")
             WCS <- w_component$design
             WCS_refit <- WCS
@@ -232,6 +233,7 @@ Run_GGE_OCAT <- function(X, Z, y, family = NULL, mgcv_model = NULL, Lmain, Lint,
     MainIndex <- safe_add_p(MainIndex, G)
     IntIndex <- Identifying_IntEffect(fitW, colnames(W))
     IntIndex <- filter_noncs_interactions(IntIndex)
+    IntIndex <- annotate_z_group_interactions(IntIndex, colnames(Z), z_groups)
     IntIndex <- safe_add_p(IntIndex, G)
     if (verbose) {
         plot(g, type = "o", col = "black", pch = 16, xlab = "Iteration", ylab = "Max Parameter Change", main = "Convergence Trace (GLM)")

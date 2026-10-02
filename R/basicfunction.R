@@ -89,7 +89,6 @@ list(index = index[ord], vars = vars[ord])
 Identifying_CSEffect <- function(fit, nam, prefix) {
 cs <- susie_cs_list(fit)
 if (!length(cs$index)) return(NULL)
-if (is_group_fit(fit)) return(Identifying_GroupCSEffect(fit, nam, prefix, cs))
 S <- lapply(seq_along(cs$index), function(k) {
 i <- cs$index[k]
 a <- cs$vars[[k]]
@@ -113,26 +112,6 @@ Identifying_CSEffect(fit, nam, "Env_CS")
 Identifying_IntEffect <- function(fitW, namW) {
 if (is.null(namW)) return(NULL)
 Identifying_CSEffect(fitW, namW, "Int_CS")
-}
-
-Identifying_GroupCSEffect <- function(fit, nam, prefix, cs) {
-S <- lapply(seq_along(cs$index), function(k) {
-i <- cs$index[k]
-g <- cs$vars[[k]]
-g <- g[order(fit$alpha[i, g], decreasing = TRUE)]
-do.call(rbind, lapply(g, function(gg) {
-a <- fit$group_index[[gg]]
-m <- fit$mu[i, a]
-data.frame(Index = a, Variable = unname(nam[a]),
-           Group = fit$group_names[gg], CS = paste0(prefix, i),
-           logBF = unname(fit$lbf[i]), PIP = unname(fit$pip[gg]),
-           PostMean = unname(m),
-           PostSD = unname(sqrt(pmax(fit$mu2[i, a] - m^2, 0))))
-}))
-})
-out <- do.call(rbind, S)
-rownames(out) <- NULL
-out
 }
 
 filter_noncs_interactions <- function(IntIndex) {
@@ -640,7 +619,7 @@ build_w_noncs_refit_term <- function(W, fitW, WCS, etaX, XCS, Z = NULL,
                                      noncs_max_abs_cor = 0.9) {
 if (is.null(fitW) || is.null(W) || ncol(W) == 0L) return(NULL)
 
-beta_total <- susie_stage_coef(fitW)
+beta_total <- clean_coef(coef.susie(fitW)[-1L])
 if (!length(beta_total) || length(beta_total) != ncol(W)) return(NULL)
 
 etaW_total <- as.numeric(matrixVectorMultiply(W, beta_total))
@@ -686,7 +665,6 @@ if (is.null(fit)) return(list(design = NULL, cs_indices = integer(0)))
 cs <- susie_cs_list(fit)
 cs_indices <- cs$index
 if (!length(cs_indices)) return(list(design = NULL, cs_indices = integer(0)))
-if (is_group_fit(fit)) return(build_group_cs_design(X, fit, prefix, cs))
 
 Alpha_filtered <- fit$alpha * 0
 for (k in seq_along(cs_indices)) {
@@ -701,26 +679,6 @@ XCS <- XCS[, cs_indices, drop = FALSE]
 if (is.null(dim(XCS))) XCS <- matrix(XCS, ncol = 1)
 colnames(XCS) <- paste0(prefix, cs_indices)
 list(design = XCS, cs_indices = cs_indices)
-}
-
-# A group CS enters the refit as one column: the alpha-weighted sum of each
-# group's columns along its unit-norm posterior-mean direction.
-build_group_cs_design <- function(X, fit, prefix, cs) {
-D <- matrix(0, ncol(X), length(cs$index))
-for (k in seq_along(cs$index)) {
-i <- cs$index[k]
-g <- cs$vars[[k]]
-a <- fit$alpha[i, g] / sum(fit$alpha[i, g])
-for (m in seq_along(g)) {
-j <- fit$group_index[[g[m]]]
-u <- fit$mu[i, j]
-nu <- sqrt(sum(u^2))
-if (nu > 0) D[j, k] <- a[m] * u / nu
-}
-}
-XCS <- as.matrix(matrixMultiply(X, D))
-colnames(XCS) <- paste0(prefix, cs$index)
-list(design = XCS, cs_indices = cs$index)
 }
 
 build_component_design_from_fit <- function(X, fit, prefix) {
@@ -976,18 +934,13 @@ args
 
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
-                             residual_variance = NULL, groups = NULL) {
+                             residual_variance = NULL) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
 residual_variance = residual_variance
 )
-fit <- if (!is.null(groups) && anyDuplicated(groups)) {
-do.call(gsusie_ss, c(args, list(groups = groups,
-                                group_names = attr(groups, "group_names"))))
-} else {
-do.call(susieR::susie_ss, args)
-}
+fit <- do.call(susieR::susie_ss, args)
 fit$cs_config <- list(
 coverage = as.numeric(args$coverage),
 min_abs_corr = as.numeric(args$min_abs_corr)

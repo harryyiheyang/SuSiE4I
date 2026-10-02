@@ -9,8 +9,9 @@ Run_GGE_Cox <- function(X, Z, y, status,
                         noncs_max_abs_cor = 0.9,
                         include_x_squared = FALSE,
                         suff_block_size = 10000L,
-                        z_groups = NULL, z_support = NULL, min_group_int_obs = 100L,
-    returnModel = FALSE) {
+                        z_groups = NULL, z_support = NULL,
+                        min_group_int_obs = 100L,
+                        returnModel = FALSE) {
 
 run_start <- proc.time()[["elapsed"]]
 n <- length(y)
@@ -106,9 +107,10 @@ eta <- fit_final$linear.predictors
 eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 
 XCS_W <- XCS_refit
-W <- get_pairwise_interactions(z_groups = z_groups, z_support = z_support,
-            min_group_int_obs = min_group_int_obs, XCS_W, Z = Z, noint_env = noint_env,
-                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared)
+W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env,
+                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared,
+                               z_groups = z_groups, z_support = z_support,
+                               min_group_int_obs = min_group_int_obs)
 WCS <- NULL
 WCS_refit <- NULL
 if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
@@ -119,13 +121,14 @@ ssW <- cox_suffstat_block(W, eta, cbind(Z, XCS_refit), y, status,
                           nuisance_precision = projection_penalty_precision(cbind(Z, XCS_refit), fitX, fitW),
                           n_threads = n_threads, ridge = ridge,
                            block_size = suff_block_size)
-fitW <- .fit_susie_stage(groups = attr(W, "groups"), 
+fitW <- .fit_susie_stage(
 structural = list(XtX = ssW$XtX, Xty = ssW$Xty, yty = n - 1, n = n, L = Lint),
 susie_para = susie_para_int, stage = "int",
 iter = iter, min.iter = min.iter
 )
 
-cs_w <- susie_cs_list(fitW)$index
+CSdt_w <- summary(fitW)$vars
+cs_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
 w_component <- build_component_design_from_fit(
 W, fitW, "Int_CS"
 )
@@ -197,6 +200,7 @@ MainIndex <- Identifying_MainEffect(fitX, colnames(X))
 MainIndex <- safe_add_p(MainIndex, G)
 IntIndex <- Identifying_IntEffect(fitW, colnames(W))
 IntIndex <- filter_noncs_interactions(IntIndex)
+IntIndex <- annotate_z_group_interactions(IntIndex, colnames(Z), z_groups)
 IntIndex <- safe_add_p(IntIndex, G)
 
 if (verbose) {

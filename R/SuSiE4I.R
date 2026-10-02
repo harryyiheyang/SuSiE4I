@@ -30,14 +30,13 @@
 #'   as haplotypes. Either a named list whose elements give the column names or
 #'   indices of each factor's indicator columns, or a vector with one label per
 #'   `Z` column (`NA` for ungrouped columns). Grouped columns stay unpenalized
-#'   in `Z`. In the interaction stage each factor's level columns times a main
-#'   credible-set column, and each pair of different factors' level products,
-#'   enter as one group that is selected jointly by a group SuSiE with prior
-#'   weight `1 / G` over groups; interactions within a factor are never formed.
-#'   Supported when `Z` is given and `select_env = FALSE`. Use reference coding
-#'   (drop one level). `interaction_discoveries` then lists every level column
-#'   of a selected group with the group PIP and the per-level posterior mean
-#'   and SD (`PostMean`, `PostSD`), which show which levels interact.
+#'   in `Z`. The interaction stage gets one candidate column per level times
+#'   each main credible-set column, and one per level-by-level product of two
+#'   different factors; products within a factor are never formed. Selection is
+#'   unchanged (`susieR::susie_ss`). `interaction_discoveries` gains
+#'   `Factor1`, `Level1`, `Factor2`, `Level2` and `Pair`, naming the specific
+#'   levels that interact. Supported when `Z` is given and
+#'   `select_env = FALSE`. Use reference coding (drop one level).
 #' @param min_group_int_obs Minimum number of observations carrying a factor
 #'   level (for level by credible-set columns) or both levels (for level by
 #'   level columns) for that interaction column to be kept. Carriers are the

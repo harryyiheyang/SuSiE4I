@@ -31,6 +31,5 @@ fit <- SuSiE4I(
 )
 
 fit$main_discoveries
-# One row per level column of each selected group; PostMean/PostSD show
-# which levels carry the interaction.
-fit$interaction_discoveries
+# Each selected interaction names the specific levels involved.
+fit$interaction_discoveries[, c("Pair", "CS", "PIP", "Pvalue")]
