@@ -112,22 +112,21 @@ score-based sufficient statistics, SuSiE main-effect fitting, interaction
 construction from selected credible sets, SuSiE interaction fitting, and a
 final Cox partial-likelihood refit on the selected summaries.
 
-## Grouped Factors in Z (Haplotypes)
+## Interactions Between Groups of Z Columns (Haplotypes)
 
-Factor-coded covariates such as haplotypes can be passed in `Z` as reference
-coded indicator columns together with `z_groups`, for example
-`z_groups = list(HapA = c("HA_a1", "HA_a2"), HapB = c("HB_b1"))`. The factors
-stay unpenalized in `Z`. Instead of treating each indicator as an unrelated
-covariate, the interaction generator then forms one column per level times
-each main credible-set column and one column per level-by-level product of two
-different factors. Products within a factor are never formed. A column is
-dropped when fewer than `min_group_int_obs` observations (default 100) carry
-the level, or both levels for a level-by-level product. Selection in the
-interaction stage is unchanged (`susieR::susie_ss` on these columns), and
-`interaction_discoveries` names the factor and level on each side of a
-selected interaction (`Factor1`, `Level1`, `Factor2`, `Level2`, `Pair`), so
-the specific interacting haplotype levels can be read off directly. See
-`example/example_group_int.R`.
+Factor-coded covariates such as haplotypes can be passed in `Z` as indicator
+columns, with `groupint_ind` listing which columns form each group, for
+example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"), HapB = "HB_b1")`
+(indices or names; at least two groups; a group may hold one column; no
+column in two groups). For every pair of groups, each column of one group
+times each column of the other becomes its own interaction candidate, and
+columns within a group are never paired. Products with `crossprod(x) / n`
+below `1e-8` are skipped. Interactions of `Z` with the main-effect credible
+sets are unchanged and follow `noint_env`. Selection in the interaction stage
+is unchanged (`susieR::susie_ss`), and `interaction_discoveries` names the
+group and column on each side of a selected interaction (`Group1`, `Term1`,
+`Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
+be read off directly. See `example/example_group_int.R`.
 
 ## Refit Summaries
 

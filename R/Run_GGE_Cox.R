@@ -9,8 +9,7 @@ Run_GGE_Cox <- function(X, Z, y, status,
                         noncs_max_abs_cor = 0.9,
                         include_x_squared = FALSE,
                         suff_block_size = 10000L,
-                        z_groups = NULL, z_support = NULL,
-                        min_group_int_obs = 100L,
+                        groupint_ind = NULL,
                         returnModel = FALSE) {
 
 run_start <- proc.time()[["elapsed"]]
@@ -109,8 +108,7 @@ eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 XCS_W <- XCS_refit
 W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env,
                                include_x_squared = if (is.null(XCS)) FALSE else include_x_squared,
-                               z_groups = z_groups, z_support = z_support,
-                               min_group_int_obs = min_group_int_obs)
+                               groupint_ind = groupint_ind)
 WCS <- NULL
 WCS_refit <- NULL
 if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
@@ -200,7 +198,7 @@ MainIndex <- Identifying_MainEffect(fitX, colnames(X))
 MainIndex <- safe_add_p(MainIndex, G)
 IntIndex <- Identifying_IntEffect(fitW, colnames(W))
 IntIndex <- filter_noncs_interactions(IntIndex)
-IntIndex <- annotate_z_group_interactions(IntIndex, colnames(Z), z_groups)
+IntIndex <- annotate_groupint_interactions(IntIndex, colnames(Z), groupint_ind)
 IntIndex <- safe_add_p(IntIndex, G)
 
 if (verbose) {

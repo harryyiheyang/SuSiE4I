@@ -26,21 +26,16 @@
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
-#' @param z_groups Optional grouping of `Z` columns into factor variables such
-#'   as haplotypes. Either a named list whose elements give the column names or
-#'   indices of each factor's indicator columns, or a vector with one label per
-#'   `Z` column (`NA` for ungrouped columns). Grouped columns stay unpenalized
-#'   in `Z`. The interaction stage gets one candidate column per level times
-#'   each main credible-set column, and one per level-by-level product of two
-#'   different factors; products within a factor are never formed. Selection is
-#'   unchanged (`susieR::susie_ss`). `interaction_discoveries` gains
-#'   `Factor1`, `Level1`, `Factor2`, `Level2` and `Pair`, naming the specific
-#'   levels that interact. Supported when `Z` is given and
-#'   `select_env = FALSE`. Use reference coding (drop one level).
-#' @param min_group_int_obs Minimum number of observations carrying a factor
-#'   level (for level by credible-set columns) or both levels (for level by
-#'   level columns) for that interaction column to be kept. Carriers are the
-#'   non-zero entries of the unscaled `Z` columns.
+#' @param groupint_ind Optional list of at least two groups of `Z` columns,
+#'   given as column indices or names (for example the indicator columns of
+#'   each haplotype; a group may hold a single column). For every pair of
+#'   groups, each column of one group times each column of the other is added
+#'   to the interaction design as its own candidate; columns within a group are
+#'   never paired, and a product with `crossprod(x) / n < 1e-8` is skipped.
+#'   A column may belong to only one group. `Z` by main-effect interactions
+#'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
+#'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
+#'   (levels) on each side. Not supported with `select_env = TRUE`.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -95,7 +90,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
-                    z_groups = NULL, min_group_int_obs = 100L,
+                    groupint_ind = NULL,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,
@@ -128,17 +123,14 @@ if (length(y) != n) stop("Length(y) must equal nrow(X).")
 if (scale_data) X <- large_scale(X)
 if (is.null(colnames(X))) colnames(X) <- paste0("X", seq_len(ncol(X)))
 
-if (!is.null(z_groups) && is.null(Z)) stop("z_groups requires Z.")
+if (!is.null(groupint_ind) && is.null(Z)) stop("groupint_ind requires Z.")
 if (!is.null(Z)) {
 Z <- as.matrix(Z)
 if (nrow(Z) != n) stop("nrow(Z) must equal nrow(X).")
 if (is.null(colnames(Z))) colnames(Z) <- paste0("Z", seq_len(ncol(Z)))
-z_support <- NULL
-if (!is.null(z_groups)) {
-if (select_env) stop("z_groups is not supported with select_env = TRUE.")
-z_groups <- normalize_z_groups(z_groups, Z)
-check_z_group_coding(Z, z_groups)
-z_support <- !is.na(Z) & Z != 0
+if (!is.null(groupint_ind)) {
+if (select_env) stop("groupint_ind is not supported with select_env = TRUE.")
+groupint_ind <- normalize_groupint_ind(groupint_ind, Z)
 }
 if (scale_data) Z <- large_scale(Z)
 if (is.null(colnames(Z))) colnames(Z) <- paste0("Z", seq_len(ncol(Z)))
@@ -211,8 +203,7 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_Cox(
-X = X, Z = Z, z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs, y = y, status = status,
+X = X, Z = Z, groupint_ind = groupint_ind, y = y, status = status,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -289,8 +280,7 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_OCAT(
-X = X, Z = Z, z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs, y = y, family = ocat_family,
+X = X, Z = Z, groupint_ind = groupint_ind, y = y, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
@@ -341,8 +331,7 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE_CLM(
-X = X, Z = Z, z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs, y = y, clm_link = ordinal_link,
+X = X, Z = Z, groupint_ind = groupint_ind, y = y, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -412,8 +401,7 @@ returnModel = returnModel
 ))
 }
 return(Run_GGE(
-X = X, Z = Z, z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+X = X, Z = Z, groupint_ind = groupint_ind, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -466,8 +454,7 @@ returnModel = returnModel
 ))
 }
 Run_GGE_GLM(
-X = X, Z = Z, z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs, y = y, family = family,
+X = X, Z = Z, groupint_ind = groupint_ind, y = y, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,

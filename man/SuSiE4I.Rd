@@ -19,8 +19,7 @@ SuSiE4I(
   select_env = FALSE,
   L_env = 10,
   noint_env = NULL,
-  z_groups = NULL,
-  min_group_int_obs = 100L,
+  groupint_ind = NULL,
   include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
@@ -71,22 +70,16 @@ outcome paths.}
 
 \item{noint_env}{Indices of `Z` columns excluded from interaction construction.}
 
-\item{z_groups}{Optional grouping of `Z` columns into factor variables such
-as haplotypes. Either a named list whose elements give the column names or
-indices of each factor's indicator columns, or a vector with one label per
-`Z` column (`NA` for ungrouped columns). Grouped columns stay unpenalized
-in `Z`. The interaction stage gets one candidate column per level times
-each main credible-set column, and one per level-by-level product of two
-different factors; products within a factor are never formed. Selection is
-unchanged (`susieR::susie_ss`). `interaction_discoveries` gains
-`Factor1`, `Level1`, `Factor2`, `Level2` and `Pair`, naming the specific
-levels that interact. Supported when `Z` is given and
-`select_env = FALSE`. Use reference coding (drop one level).}
-
-\item{min_group_int_obs}{Minimum number of observations carrying a factor
-level (for level by credible-set columns) or both levels (for level by
-level columns) for that interaction column to be kept. Carriers are the
-non-zero entries of the unscaled `Z` columns.}
+\item{groupint_ind}{Optional list of at least two groups of `Z` columns,
+given as column indices or names (for example the indicator columns of
+each haplotype; a group may hold a single column). For every pair of
+groups, each column of one group times each column of the other is added
+to the interaction design as its own candidate; columns within a group are
+never paired, and a product with `crossprod(x) / n < 1e-8` is skipped.
+A column may belong to only one group. `Z` by main-effect interactions
+still follow `noint_env`. `interaction_discoveries` gains `Group1`,
+`Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
+(levels) on each side. Not supported with `select_env = TRUE`.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}

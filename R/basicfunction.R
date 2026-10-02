@@ -1,13 +1,13 @@
 get_pairwise_interactions <- function(W, Z = NULL, noint_env = NULL,
                                       include_x_squared = FALSE,
-                                      z_groups = NULL, z_support = NULL,
-                                      min_group_int_obs = 100L) {
-if (!is.null(z_groups) && !is.null(Z)) {
-return(get_grouped_pairwise_interactions(
-W, Z, noint_env = noint_env, include_x_squared = include_x_squared,
-z_groups = z_groups, z_support = z_support,
-min_group_int_obs = min_group_int_obs
-))
+                                      groupint_ind = NULL) {
+if (!is.null(groupint_ind) && !is.null(Z)) {
+ZZ <- get_groupint_interactions(Z, groupint_ind)
+WZ <- get_pairwise_interactions(W, Z = Z, noint_env = noint_env,
+                                include_x_squared = include_x_squared)
+if (is.null(WZ)) return(ZZ)
+if (is.null(ZZ)) return(WZ)
+return(cbind(WZ, ZZ))
 }
 if (is.null(W)) return(NULL)
 W <- as.matrix(W)

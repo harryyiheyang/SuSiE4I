@@ -2,7 +2,7 @@ pkgload::load_all(".", quiet = TRUE)
 
 # Two haplotype factors in Z (reference coding), SNP genotypes in X.
 # Truth: level a3 of HapA interacts with snp10; level a1 of HapA interacts
-# with level b2 of HapB. Level a4 is rare and is dropped by min_group_int_obs.
+# with level b2 of HapB.
 set.seed(11)
 n <- 5000L
 p <- 200L
@@ -25,8 +25,7 @@ y <- 0.15 * xs[, 10] - 0.12 * xs[, 50] + 0.2 * DA[, "HA_a2"] + 0.1 * age +
 
 fit <- SuSiE4I(
   X = X, Z = Z, y = y, family = "gaussian",
-  z_groups = list(HapA = colnames(DA), HapB = colnames(DB)),
-  min_group_int_obs = 100,
+  groupint_ind = list(HapA = colnames(DA), HapB = colnames(DB)),
   L_main = 5, L_int = 5, verbose = FALSE
 )
 
