@@ -85,20 +85,23 @@ vars <- lapply(fit$sets$cs, as.integer)
 }
 if (!is.null(fit$suggested) && length(fit$suggested$index)) {
 index <- c(index, fit$suggested$index)
-vars <- c(vars, as.list(fit$suggested$lead))
+vars <- c(vars, fit$suggested$vars)
 }
 if (!length(index)) return(list(index = integer(0), vars = list()))
 ord <- order(index)
 list(index = index[ord], vars = vars[ord])
 }
 
-# Components that did not form a CS but are kept as "suggested": the prior
-# variance is not shrunk to zero, the component's lbf is positive, and after
-# purifying its coverage set (dropping members with |r| < min_abs_corr to the
-# lead) only the lead remains, with alpha of at least suggested_coverage.
-find_suggested_components <- function(fit, XtX, coverage, min_abs_corr,
+# Interaction components that did not form a CS but were not killed by SuSiE
+# (prior variance V above prior_tol) all enter the refit. Each one is purified
+# like a CS: take its coverage set at suggested_coverage and keep the members
+# with |r| >= min_abs_corr to the lead; the refit term is built from that
+# purified set. A component is reported as "suggested" only when the purified
+# set is the lead alone and the lead's alpha is at least suggested_coverage.
+find_suggested_components <- function(fit, XtX, min_abs_corr,
                                       suggested_coverage, prior_tol = 1e-9) {
-out <- list(index = integer(0), lead = integer(0), coverage = numeric(0))
+out <- list(index = integer(0), vars = list(), coverage = numeric(0),
+            report = logical(0))
 L <- nrow(fit$alpha)
 if (is.null(L) || !L) return(out)
 XtX <- as.matrix(XtX)
@@ -107,19 +110,21 @@ cs_index <- if (is.null(fit$sets$cs_index)) integer(0) else as.integer(fit$sets$
 taken <- unlist(lapply(fit$sets$cs, as.integer))
 for (l in setdiff(seq_len(L), cs_index)) {
 if (!is.finite(fit$V[l]) || fit$V[l] <= prior_tol) next
-if (!is.finite(fit$lbf[l]) || fit$lbf[l] <= 0) next
 o <- order(fit$alpha[l, ], decreasing = TRUE)
 lead <- o[1L]
-if (fit$alpha[l, lead] < suggested_coverage || lead %in% taken) next
-k <- which(cumsum(fit$alpha[l, o]) >= coverage)[1L]
+if (lead %in% taken) next
+k <- which(cumsum(fit$alpha[l, o]) >= suggested_coverage)[1L]
 if (is.na(k)) k <- length(o)
 S <- o[seq_len(k)]
+S <- S[!(S %in% taken)]
 r <- XtX[lead, S] / (d[lead] * d[S])
-if (sum(abs(r) >= min_abs_corr) != 1L) next
+P <- S[abs(r) >= min_abs_corr]
 out$index <- c(out$index, l)
-out$lead <- c(out$lead, lead)
-out$coverage <- c(out$coverage, fit$alpha[l, lead])
-taken <- c(taken, lead)
+out$vars <- c(out$vars, list(P))
+out$coverage <- c(out$coverage, sum(fit$alpha[l, P]))
+out$report <- c(out$report,
+                length(P) == 1L && fit$alpha[l, lead] >= suggested_coverage)
+taken <- c(taken, P)
 }
 out
 }
@@ -142,6 +147,10 @@ sug <- match(comp, fit$suggested$index)
 cs_cov <- as.numeric(fit$sets$coverage)[match(comp, as.integer(fit$sets$cs_index))]
 out$InCS <- is.na(sug)
 out$Coverage <- ifelse(is.na(sug), cs_cov, fit$suggested$coverage[sug])
+# Unreported non-CS components stay in the refit but are not discoveries.
+out <- out[is.na(sug) | fit$suggested$report[sug], , drop = FALSE]
+rownames(out) <- NULL
+if (!nrow(out)) return(NULL)
 }
 out
 }
@@ -1002,7 +1011,7 @@ stop("The fitted SuSiE requested coverage does not match its effective CS config
 }
 if (!is.null(suggested_coverage)) {
 fit$suggested <- find_suggested_components(
-fit, structural$XtX, coverage = fit$cs_config$coverage,
+fit, structural$XtX,
 min_abs_corr = fit$cs_config$min_abs_corr,
 suggested_coverage = suggested_coverage
 )

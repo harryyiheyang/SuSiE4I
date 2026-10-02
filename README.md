@@ -130,14 +130,14 @@ be read off directly. See `example/example_group_int.R`.
 
 Sparse level-by-level cells often leave the true interaction with posterior
 probability above 0.8 but below the 95% needed for a credible set. When
-`groupint_ind` is given, interaction components that did not form a credible
-set are therefore also kept as *suggested* if SuSiE did not shrink their prior
-variance to zero, their lbf is positive, and after purifying the coverage set
-(dropping members with absolute correlation below `min_abs_corr` to the lead)
-only the lead remains with posterior probability at least
-`int_suggested_coverage` (default 0.8). Suggested components enter the refit
-like credible sets and are reported with `InCS = FALSE` and their `Coverage`.
-Main effects still require a credible set. With `groupint_ind`, `L_int`
+`groupint_ind` is given, every interaction component that SuSiE did not kill
+(prior variance above zero) enters the refit even without a credible set. Its
+refit term is built from its coverage set at `int_suggested_coverage`
+(default 0.8), purified by dropping members with absolute correlation below
+`min_abs_corr` to the lead. Such a component is reported as *suggested*
+(`InCS = FALSE`, with its `Coverage`) only when the purified set is the lead
+alone with posterior probability at least `int_suggested_coverage`; the others
+only adjust the refit. Main effects still require a credible set. With `groupint_ind`, `L_int`
 defaults to 10.
 
 ## Refit Summaries

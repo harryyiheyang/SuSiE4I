@@ -37,16 +37,16 @@
 #'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 #'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 #'   (levels) on each side. Not supported with `select_env = TRUE`.
-#' @param int_suggested_coverage Interaction-stage components that do not
-#'   form a credible set are kept as "suggested" when SuSiE did not shrink
-#'   their prior variance to zero, their lbf is positive, and after purifying
-#'   their coverage set (dropping members with absolute correlation below
-#'   `min_abs_corr` to the lead) only the lead remains with posterior
-#'   probability at least this value. Suggested components enter the refit
-#'   like credible sets and are reported in `interaction_discoveries` with
-#'   `InCS = FALSE`; `Coverage` gives the CS coverage or the lead's posterior
-#'   probability. `NULL` (default) uses 0.8 when `groupint_ind` is given and
-#'   disables suggestions otherwise; `FALSE` disables them.
+#' @param int_suggested_coverage Coverage used for interaction-stage
+#'   components that do not form a credible set. Every such component that
+#'   SuSiE did not kill (prior variance above zero) enters the refit; its
+#'   refit term is built from its coverage set at this level, purified by
+#'   dropping members with absolute correlation below `min_abs_corr` to the
+#'   lead. It is reported in `interaction_discoveries` as suggested
+#'   (`InCS = FALSE`) only when the purified set is the lead alone with
+#'   posterior probability at least this value; `Coverage` gives the CS
+#'   coverage or the purified coverage. `NULL` (default) uses 0.8 when
+#'   `groupint_ind` is given and disables this otherwise; `FALSE` disables it.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
