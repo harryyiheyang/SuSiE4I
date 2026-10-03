@@ -61,7 +61,6 @@ cbind(A, cbind(A, gam_matern_basis(x, base$kappa, base$lambda)$DX) %*% base$Qv)
 #' @export
 smooth.construct.s4iAM.smooth.spec <- function(object, data, knots) {
 base <- object$xt$base
-if (is.null(base)) stop("bs = 's4iAM' is internal to SuSiE4I_GAM.")
 X <- gam_amatern_predict(base, data[[object$term]])
 S <- base$S
 # A numeric by-variable multiplies the whole basis, so its constant column

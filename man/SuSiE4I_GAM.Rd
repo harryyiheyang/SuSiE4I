@@ -9,85 +9,125 @@ SuSiE4I_GAM(
   data,
   X,
   family = gaussian(),
-  mgcv_model = c("gam", "bam"),
+  mgcv_model = "gam",
   k = 10L,
+  scale_data = TRUE,
+  n_threads = 4,
   L_main = 10,
   L_int = 5,
   noint_vars = NULL,
-  scale_X = TRUE,
+  int_suggested_coverage = NULL,
+  include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
   max_iter = 10,
-  min_iter = 2,
   max_eps = 1e-05,
-  n_threads = 1,
+  min_iter = 2,
+  x_noncs_var = 0.1,
+  w_noncs_var = 0.1,
+  noncs_max_abs_cor = 0.9,
   suff_block_size = 10000L,
-  verbose = TRUE
+  verbose = TRUE,
+  returnModel = FALSE
 )
 }
 \arguments{
-\item{formula}{Null-model formula with response, parametric terms and
-univariate `s()` terms.}
+\item{formula}{Null-model formula with univariate `s()` terms.}
 
-\item{data}{Data frame holding the response and every variable in `formula`.}
+\item{data}{Data frame with the response and the null-model covariates.}
 
 \item{X}{Numeric n by p genotype matrix.}
 
-\item{family}{A GLM or mgcv family supported by IRLS (default `gaussian()`).}
+\item{family}{GLM or mgcv family (default `gaussian()`).}
 
-\item{mgcv_model}{`"gam"` (REML) or `"bam"` (fREML with `discrete = TRUE`).}
+\item{mgcv_model}{`"gam"` (REML) or `"bam"` (fREML, `discrete = TRUE`).}
 
-\item{k}{Basis dimension of every smooth (`k` written inside `s()` wins).}
+\item{k}{Basis dimension of each smooth unless set inside `s()`.}
 
-\item{L_main, L_int}{Number of SuSiE components for the main and interaction
-stages.}
+\item{scale_data}{Whether to standardize `X` and `Z`.}
+
+\item{n_threads}{Number of threads used for cross-products.}
+
+\item{L_main}{Number of main-effect SuSiE components.}
+
+\item{L_int}{Number of interaction SuSiE components. When `groupint_ind` is
+given and `L_int` is not supplied, 10 is used.}
 
 \item{noint_vars}{Names of formula variables that do not interact with `X`.}
 
-\item{scale_X}{Whether to standardize `X` (it is always centered).}
+\item{int_suggested_coverage}{Coverage used for interaction-stage
+components that do not form a credible set. Every such component that
+SuSiE did not kill (prior variance above zero) enters the refit; its
+refit term is built from its coverage set at this level, purified by
+dropping members with absolute correlation below `min_abs_corr` to the
+lead. It is reported in `interaction_discoveries` as suggested
+(`InCS = FALSE`) only when the purified set is the lead alone with
+posterior probability at least this value; `Coverage` gives the CS
+coverage or the purified coverage. `NULL` (default) uses 0.8 when
+`groupint_ind` is given and disables this otherwise; `FALSE` disables it.}
 
-\item{susie_para_main, susie_para_int}{Named `susieR::susie_ss()` options,
-as in [SuSiE4I()].}
+\item{include_x_squared}{Whether to include squared main-effect summaries in
+the interaction design.}
 
-\item{max_iter, min_iter, max_eps}{Outer-loop controls, as in [SuSiE4I()].}
+\item{susie_para_main}{Named `susieR::susie_ss()` options for main effects.
+`prior_variance` is an absolute coefficient prior variance; the legacy
+`scaled_prior_variance` name is accepted with a warning and interpreted
+identically. Set `estimate_prior_variance = FALSE` to fix V or `TRUE` to
+initialize its estimation. Through `min_iter`, the prior-variance value and
+estimation switch are ignored in favor of fixed `scaled_prior_variance = 2`
+and `estimate_prior_variance = FALSE`; other `susie_para_main` settings
+remain active. User prior-variance settings take effect after `min_iter`.
+This setting applies only to the main stage.}
 
-\item{n_threads}{Threads for cross-products.}
+\item{susie_para_int}{SuSiE options for interaction effects, with the same
+prior-variance semantics as `susie_para_main`; it is independent of the
+main-stage setting.}
 
-\item{suff_block_size}{Row-block size for cross-products.}
+\item{max_iter}{Maximum number of outer iterations.}
+
+\item{max_eps}{Outer-loop convergence threshold.}
+
+\item{min_iter}{End of the fixed-V warm-up and minimum outer iterations
+before convergence can be declared.}
+
+\item{x_noncs_var}{Minimum projected residual-variance fraction required to
+include `Main_noncs_res`.}
+
+\item{w_noncs_var}{Minimum residual-variance fraction required to include
+`Int_noncs_res`.}
+
+\item{noncs_max_abs_cor}{Maximum allowed absolute correlation between a
+non-CS term and applicable refit covariates.}
+
+\item{suff_block_size}{Row-block size for sufficient-statistic cross-products.}
 
 \item{verbose}{Whether to print iteration diagnostics.}
+
+\item{returnModel}{Whether to return the final design matrix.}
 }
 \value{
-A list with `fitNull`, `fitX`, `fitW`, the final joint mgcv fit
-  `fitJoint`, `main_discoveries`, `interaction_discoveries`, `report`,
-  the rewritten null `formula`, and `diagnostics`.
+As [SuSiE4I()], plus the null fit `fitNull`.
 }
 \description{
 Fine-maps main effects of `X` and their interactions with the covariates of
 a GAM null model. The null model is a `gam()`/`bam()` formula over `data`
 (for example `y ~ s(age, by = sex) + sex`); it is fitted once and its
-smooths are integrated out of every SuSiE stage by the penalized projection
-\eqn{I - B (B^\top W B + S_\lambda/\phi)^{-1} B^\top W}{I - B (B'WB + S/phi)^-1 B'W},
-the Gaussian random-effect form of the smooth (so the projection matrix is
-\eqn{V_p/\phi}{Vp/phi} of the GAM). The main stage uses the current
-interaction fit as an offset and the interaction stage uses the current
-main fit as an offset; only the null model is projected.
+smooths are integrated out of both SuSiE stages by the penalized projection
+with \eqn{(B^\top W B + S_\lambda/\phi)^{-1}}{(B'WB + S/phi)^-1}, i.e. the
+GAM's \eqn{V_p/\phi}{Vp/phi}. The main stage uses the interaction fit as an
+offset and the interaction stage the main fit; only the null model is
+projected. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 }
 \details{
-Every `s()` term is fitted with the adaptive Matern basis of mgcv.taps
-(null space `1, z` unpenalized, Matern part projected orthogonal to it),
-whatever `bs` was written; the basis is built once and reused. `by`
-variables are supported: a factor `by` becomes a common smooth plus one
-varying-coefficient smooth per centered contrast, and a numeric `by` gives a
-varying coefficient without its constant column (its main effect enters as a
-linear term). `te()`, `ti()` and `t2()` are not supported. All covariates,
-including factor contrasts, and `X` are centered before fitting.
+Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
+written (with a warning); it is built once and reused. A factor `by` becomes
+a common smooth plus one varying-coefficient smooth per centered contrast; a
+numeric `by` gives a varying coefficient whose constant column is dropped.
+`te()`, `ti()` and `t2()` are not supported. All covariates (factor
+contrasts included) and `X` are centered.
 
-Interactions follow strong heredity: candidates are built only from
-main-effect credible sets. For every covariate `z` they are `Main_CS * z`
-(linear modification) and, when `z` has a smooth, `Main_CS * f(z)` with
-`f(z)` the fitted null-model contribution of all smooths in `z` (including
-`by` terms). The final joint refit is the null formula plus the
-main and interaction credible-set terms, the latter ridge-penalized with
-prior variances from SuSiE.
+Interactions follow strong heredity: they are built from main-effect
+credible sets only, with every covariate `z` (`Main_CS * z`) and, for
+covariates with a smooth, with its fitted null contribution
+(`Main_CS * f(z)`, all smooths in `z` including `by` terms).
 }
