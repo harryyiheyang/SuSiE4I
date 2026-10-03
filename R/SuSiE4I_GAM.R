@@ -5,9 +5,10 @@
 #' (for example `y ~ s(age, by = sex) + sex`); it is fitted once and its
 #' smooths are integrated out of both SuSiE stages by the penalized projection
 #' with \eqn{(B^\top W B + S_\lambda/\phi)^{-1}}{(B'WB + S/phi)^-1}, i.e. the
-#' GAM's \eqn{V_p/\phi}{Vp/phi}. The main stage uses the interaction fit as an
-#' offset and the interaction stage the main fit; only the null model is
-#' projected. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
+#' GAM's \eqn{V_p/\phi}{Vp/phi}. The two stages project each other's credible
+#' sets as well (the main stage `[B, Int_CS]`, the interaction stage
+#' `[B, Main_CS]`, credible-set columns with ridge \eqn{1/V}{1/V}); no offsets
+#' are used. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 #'
 #' Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
 #' written (with a warning); it is built once and reused. A factor `by` becomes
@@ -19,7 +20,11 @@
 #' Interactions follow strong heredity: they are built from main-effect
 #' credible sets only, with every covariate `z` (`Main_CS * z`) and, for
 #' covariates with a smooth, with its fitted null contribution
-#' (`Main_CS * f(z)`, all smooths in `z` including `by` terms).
+#' (`Main_CS * f(z)`, all smooths in `z` including `by` terms). Interaction
+#' candidates are standardized. In the joint refit an interaction credible set
+#' on a smooth `z` enters as the linear `Main_CS * z` (ridge \eqn{1/V}{1/V}
+#' from SuSiE) plus `s(z, by = Main_CS)` built from the Matern part of the
+#' main-effect basis (null space removed, smoothing parameter by REML).
 #'
 #' @param formula Null-model formula with univariate `s()` terms.
 #' @param data Data frame with the response and the null-model covariates.
