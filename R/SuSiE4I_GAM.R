@@ -23,8 +23,9 @@
 #' (`Main_CS * f(z)`, all smooths in `z` including `by` terms). Interaction
 #' candidates are standardized. In the joint refit an interaction credible set
 #' on a smooth `z` enters as the linear `Main_CS * z` (ridge \eqn{1/V}{1/V}
-#' from SuSiE) plus `s(z, by = Main_CS)` built from the Matern part of the
-#' main-effect basis (null space removed, smoothing parameter by REML).
+#' from SuSiE) plus `Main_CS * M(z)`, the Matern part of the main-effect basis
+#' (null space removed), with the fixed penalty \eqn{\phi\Omega/(cV)}{phi*Omega/(c*V)}
+#' where `c` scales the block to one unit-variance column.
 #'
 #' @param formula Null-model formula with univariate `s()` terms.
 #' @param data Data frame with the response and the null-model covariates.

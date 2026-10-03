@@ -66,21 +66,17 @@ S <- base$S
 # A numeric by-variable multiplies the whole basis, so its constant column
 # would duplicate the by-variable's own main effect: drop it, leaving z as the
 # unpenalized null space of the varying coefficient.
-# For the interaction smooth s(z, by = Main_CS) (xt$drop_lin) the linear part
-# X*z enters the refit separately with the SuSiE ridge 1/V, so the whole null
-# space is dropped and only the penalized Matern part remains.
 drop_const <- !identical(object$by, "NA")
-ndrop <- if (drop_const) 1L + isTRUE(object$xt$drop_lin) else 0L
-if (ndrop) {
-X <- X[, -seq_len(ndrop), drop = FALSE]
-S <- S[-seq_len(ndrop), -seq_len(ndrop), drop = FALSE]
+if (drop_const) {
+X <- X[, -1L, drop = FALSE]
+S <- S[-1L, -1L, drop = FALSE]
 object$C <- matrix(0, 0L, ncol(X))
 }
 object$X <- X
 object$S <- list(S)
 object$base <- base
-object$ndrop <- ndrop
-object$null.space.dim <- base$m - ndrop
+object$drop_const <- drop_const
+object$null.space.dim <- base$m - drop_const
 object$rank <- ncol(X) - object$null.space.dim
 object$df <- ncol(X)
 object$bs.dim <- ncol(X)
@@ -91,5 +87,5 @@ object
 #' @export
 Predict.matrix.s4iAM.smooth <- function(object, data) {
 X <- gam_amatern_predict(object$base, data[[object$term]])
-if (object$ndrop) X[, -seq_len(object$ndrop), drop = FALSE] else X
+if (isTRUE(object$drop_const)) X[, -1L, drop = FALSE] else X
 }

@@ -25,8 +25,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
     W <- NULL
     fitX <- NULL
     fitW <- NULL
-    int_smooth <- NULL
-    fml_refit <- null$formula
+    G_pen <- NULL
     fitX_no_cs_streak <- 0L
     for (iter in 1:max.iter) {
         beta_prev <- beta
@@ -36,18 +35,10 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         pseudo_response <- work$pseudo_response
         W_diag <- work$weights
         S_null <- gam_null_penalty(null$fit, fit_final) / work$phi0
-        Bm <- B
-        Sm <- S_null
-        if (!is.null(int_smooth)) {
-            # s(z, by = Main_CS) terms of the last refit are projected with their REML penalty
-            Lp <- stats::predict(fit_final, type = "lpmatrix")
-            keep <- !colnames(Lp) %in% names(attr(fit_final, "refit_penalty")$V)
-            Bm <- Lp[, keep, drop = FALSE]
-            Sm <- (gam_null_penalty(fit_final, fit_final) / work$phi0)[keep, keep, drop = FALSE]
-        }
-        ZI_main <- cbind(Bm, WCS_refit)
-        P_main <- diag(c(rep(0, ncol(Bm)), projection_penalty_precision(WCS_refit, fitX, fitW)), ncol(ZI_main))
-        P_main[seq_len(ncol(Bm)), seq_len(ncol(Bm))] <- Sm
+        # the Matern blocks of the last refit (G_pen) are projected with their fixed precision Omega / (c V)
+        pW <- projection_penalty_precision(WCS_refit, fitX, fitW)
+        ZI_main <- cbind(B, WCS_refit, do.call(cbind, lapply(G_pen, `[[`, "X")))
+        P_main <- as.matrix(Matrix::bdiag(c(list(S_null, diag(pW, length(pW))), lapply(G_pen, `[[`, "P"))))
         ssX <- weighted_projected_suffstats(X = X, y = pseudo_response, ZI = ZI_main, weights = W_diag,
             nuisance_precision = P_main, n_threads = n_threads,
             block_size = suff_block_size)
@@ -88,7 +79,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         W <- if (main_no_cs) NULL else get_pairwise_interactions(XCS, Z = Z, include_x_squared = include_x_squared)
         WCS <- NULL
         WCS_refit <- NULL
-        int_smooth <- NULL
+        G_pen <- NULL
         if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
             W <- NULL
             fitW <- NULL
@@ -124,26 +115,26 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                 }
             }
             # An Int CS whose z (z or f(z)) is smooth in the null model is refitted as the linear
-            # Xi*z (column Int_CSk, SuSiE ridge 1/V) plus the penalized Matern part s(z, by = Xi).
+            # Xi*z (column Int_CSk, ridge 1/V) plus the Matern part Xi*M(z) of the main-effect basis
+            # with the fixed penalty Omega / (c V); V is SuSiE's and c = n / tr(Omega^-1 G'G) puts the
+            # block on the scale of one unit-variance column.
             csw <- susie_cs_list(fitW)
+            bases <- environment(null$formula)$.s4i_bases
             zw <- sub("^f\\((.*)\\)$", "\\1", sub("\\*Main_CS[0-9]+$", "", colnames(W)))
             for (k in seq_along(csw$index)) {
-                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(environment(null$formula)$.s4i_bases)]
+                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(bases)]
                 if (length(v)) {
                     v <- v[which.max(fitW$alpha[csw$index[k], v])]
-                    int_smooth[paste0("Int_CS", csw$index[k])] <- paste0("s(", zw[v], "):", sub("^.*\\*", "", colnames(W)[v]))
+                    cs <- paste0("Int_CS", csw$index[k])
+                    xk <- XCS[, sub("^.*\\*", "", colnames(W)[v])]
+                    WCS_refit[, cs] <- xk * Z[, zw[v]]
+                    base <- bases[[zw[v]]]
+                    Gk <- xk * gam_amatern_predict(base, null$data[[zw[v]]])[, -(1:2), drop = FALSE]
+                    Om <- base$S[-(1:2), -(1:2)]
+                    Vcs <- refit_penalty_variance(fitX, fitW, cs)
+                    G_pen[[paste0("G_", cs)]] <- list(X = Gk, P = Om * sum(solve(Om) * crossprod(Gk)) / (n * Vcs))
                 }
             }
-            for (cs in names(int_smooth)) {
-                WCS_refit[, cs] <- XCS[, sub("^.*:", "", int_smooth[cs])] * Z[, sub("^s\\((.*)\\):.*$", "\\1", int_smooth[cs])]
-            }
-        }
-        fml_refit <- null$formula
-        if (!is.null(int_smooth)) {
-            zs <- sub("^s\\((.*)\\):.*$", "\\1", int_smooth)
-            xs <- sub("^.*:", "", int_smooth)
-            fml_refit <- stats::update(null$formula, stats::as.formula(paste(". ~ . +", paste(unique(sprintf(
-                "s(%s, by = %s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]], drop_lin = TRUE))", zs, xs, zs)), collapse = " + "))))
         }
         pred <- if (!is.null(WCS_refit)) {
             mgcv_predictor_data(Xextra = cbind(XCS_refit, WCS_refit), n = n)
@@ -156,7 +147,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         penalty_V <- refit_penalty_variance(fitX, fitW, penalty_names)
         fit_final <- {
             mgcv_fit_fixed_ridge(null$response, colnames(pred), Data, family, penalty_V, dispersion = work$phi0,
-                mgcv_model = mgcv_model, formula = fml_refit)
+                mgcv_model = mgcv_model, formula = null$formula, extra_pen = G_pen)
         }
         coefs <- coef(fit_final)
         coefs[is.na(coefs)] <- 0
@@ -200,7 +191,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
     penalty_V <- refit_penalty_variance(fitX, fitW, penalty_names)
     {
         fit_final <- mgcv_fit_fixed_ridge(null$response, colnames(pred), Dat, family, penalty_V, dispersion = refit_dispersion,
-            mgcv_model = mgcv_model, formula = fml_refit)
+            mgcv_model = mgcv_model, formula = null$formula, extra_pen = G_pen)
     }
     fit_final$n_eff <- work$n_eff
     G <- tryCatch(summary(fit_final)$p.table, error = function(e) NULL)
