@@ -123,13 +123,14 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                   }
                 }
             }
-            # An Int CS containing Xi*f(z) is refitted as s(z, by = Xi) with the main-effect basis of z.
+            # An Int CS whose z (z or f(z)) is smooth in the null model is refitted as s(z, by = Xi).
             csw <- susie_cs_list(fitW)
+            zw <- sub("^f\\((.*)\\)$", "\\1", sub("\\*Main_CS[0-9]+$", "", colnames(W)))
             for (k in seq_along(csw$index)) {
-                v <- csw$vars[[k]][grepl("^f\\(.*\\)\\*Main_CS[0-9]+$", colnames(W)[csw$vars[[k]]])]
+                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(environment(null$formula)$.s4i_ibases)]
                 if (length(v)) {
-                    v <- colnames(W)[v[which.max(fitW$alpha[csw$index[k], v])]]
-                    int_smooth[paste0("Int_CS", csw$index[k])] <- sub("^f\\((.*)\\)\\*(Main_CS[0-9]+)$", "s(\\1):\\2", v)
+                    v <- v[which.max(fitW$alpha[csw$index[k], v])]
+                    int_smooth[paste0("Int_CS", csw$index[k])] <- paste0("s(", zw[v], "):", sub("^.*\\*", "", colnames(W)[v]))
                 }
             }
             if (!is.null(int_smooth)) {
