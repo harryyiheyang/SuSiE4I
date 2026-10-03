@@ -88,8 +88,12 @@ cols[[v]] <- colnames(D)
 
 env <- new.env(parent = environment(formula))
 env$.s4i_bases <- list()
+env$.s4i_ibases <- list()
 sterm <- function(z, by, kz) {
-if (is.null(env$.s4i_bases[[z]])) env$.s4i_bases[[z]] <- gam_amatern_base(new[[z]], k = kz)
+if (is.null(env$.s4i_bases[[z]])) {
+env$.s4i_bases[[z]] <- gam_amatern_base(new[[z]], k = kz)
+env$.s4i_ibases[[z]] <- gam_amatern_base(new[[z]], k = kz, m = 1L)
+}
 sprintf("s(%s%s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]]))", z,
         if (is.null(by)) "" else paste0(", by = ", by), z)
 }
@@ -127,8 +131,7 @@ q <- length(stats::coef(fit_null))
 S <- matrix(0, q, q)
 for (sm in fit_null$smooth) {
 ii <- sm$first.para:sm$last.para
-nm <- if (length(sm$S) == 1L) sm$label else paste0(sm$label, seq_along(sm$S))
-for (j in seq_along(sm$S)) S[ii, ii] <- S[ii, ii] + fit$sp[[nm[j]]] * sm$S[[j]]
+S[ii, ii] <- S[ii, ii] + fit$sp[[sm$label]] * sm$S[[1L]]
 }
 S
 }

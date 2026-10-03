@@ -21,7 +21,10 @@ gam_amatern_nk <- function(x) {
 min(300L, as.integer(floor(0.3 * length(unique(x)))))
 }
 
-gam_amatern_base <- function(x, k = 10L, grid_size = 5000L) {
+# m = 2: null space (1, z) for the main effect s(z). m = 1: null space is the
+# intercept only, used for the interaction s(z, by = Main_CS), where the
+# intercept is dropped and the whole curve, linear trend included, is penalized.
+gam_amatern_base <- function(x, k = 10L, grid_size = 5000L, m = 2L) {
 x <- as.numeric(x)
 ux <- sort(unique(x))
 nk <- gam_amatern_nk(x)
@@ -34,8 +37,7 @@ grid <- if (length(ux) <= grid_size) ux else
   stats::quantile(x, seq(0, 1, length.out = grid_size), names = FALSE)
 kappa <- gam_kappa_quantile(x, nk)
 lambda <- 10 * stats::sd(x)
-m <- 2L
-A <- cbind(1, grid)
+A <- cbind(1, grid)[, seq_len(m), drop = FALSE]
 mb <- gam_matern_basis(grid, kappa, lambda)
 C <- cbind(A, mb$DX)
 G <- crossprod(C, A) / nrow(C)
@@ -53,7 +55,7 @@ list(kappa = kappa, lambda = lambda, Qv = Qv, S = S, m = m)
 
 gam_amatern_predict <- function(base, x) {
 x <- as.numeric(x)
-A <- cbind(1, x)
+A <- cbind(1, x)[, seq_len(base$m), drop = FALSE]
 cbind(A, cbind(A, gam_matern_basis(x, base$kappa, base$lambda)$DX) %*% base$Qv)
 }
 
@@ -78,15 +80,6 @@ object$base <- base
 object$drop_const <- drop_const
 object$null.space.dim <- base$m - drop_const
 object$rank <- ncol(X) - object$null.space.dim
-# Interaction smooth s(z, by = Main_CS): the linear part X*z gets its own ridge
-# penalty, so only the intercept is left unpenalized (and it was projected out).
-if (drop_const && isTRUE(object$xt$pen_lin)) {
-S1 <- matrix(0, ncol(X), ncol(X))
-S1[1L, 1L] <- 1
-object$S <- list(S, S1)
-object$null.space.dim <- 0L
-object$rank <- c(ncol(X) - 1L, 1L)
-}
 object$df <- ncol(X)
 object$bs.dim <- ncol(X)
 class(object) <- c("s4iAM.smooth", "mgcv.smooth")
