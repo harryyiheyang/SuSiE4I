@@ -117,7 +117,7 @@ Zint <- cbind(Zint, fz - mean(fz))
 colnames(Zint)[ncol(Zint)] <- paste0("f(", z, ")")
 }
 list(fit = fit, formula = fml, data = new, response = ig$response,
-     B = stats::predict(fit, type = "lpmatrix"), Zint = Zint)
+     B = stats::predict(fit, type = "lpmatrix"), Zint = scale(Zint))
 }
 
 # S_lambda in the null-model coefficient layout, smoothing parameters taken
