@@ -78,6 +78,15 @@ object$base <- base
 object$drop_const <- drop_const
 object$null.space.dim <- base$m - drop_const
 object$rank <- ncol(X) - object$null.space.dim
+# Interaction smooth s(z, by = Main_CS): the linear part X*z gets its own ridge
+# penalty, so only the intercept is left unpenalized (and it was projected out).
+if (drop_const && isTRUE(object$xt$pen_lin)) {
+S1 <- matrix(0, ncol(X), ncol(X))
+S1[1L, 1L] <- 1
+object$S <- list(S, S1)
+object$null.space.dim <- 0L
+object$rank <- c(ncol(X) - 1L, 1L)
+}
 object$df <- ncol(X)
 object$bs.dim <- ncol(X)
 class(object) <- c("s4iAM.smooth", "mgcv.smooth")

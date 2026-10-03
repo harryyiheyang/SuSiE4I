@@ -127,7 +127,8 @@ q <- length(stats::coef(fit_null))
 S <- matrix(0, q, q)
 for (sm in fit_null$smooth) {
 ii <- sm$first.para:sm$last.para
-S[ii, ii] <- S[ii, ii] + fit$sp[[sm$label]] * sm$S[[1L]]
+nm <- if (length(sm$S) == 1L) sm$label else paste0(sm$label, seq_along(sm$S))
+for (j in seq_along(sm$S)) S[ii, ii] <- S[ii, ii] + fit$sp[[nm[j]]] * sm$S[[j]]
 }
 S
 }

@@ -142,7 +142,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
             zs <- sub("^s\\((.*)\\):.*$", "\\1", int_smooth)
             xs <- sub("^.*:", "", int_smooth)
             fml_refit <- stats::update(null$formula, stats::as.formula(paste(". ~ . +", paste(unique(sprintf(
-                "s(%s, by = %s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]]))", zs, xs, zs)), collapse = " + "))))
+                "s(%s, by = %s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]], pen_lin = TRUE))", zs, xs, zs)), collapse = " + "))))
         }
         pred <- if (!is.null(WCS_refit)) {
             mgcv_predictor_data(Xextra = cbind(XCS_refit, WCS_refit), n = n)
