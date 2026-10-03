@@ -1,6 +1,6 @@
 # Run_GGE_GLM with the linear Z replaced by a GAM null model (see SuSiE4I_GAM):
-# both stages project only the null smooths (ZI = B, precision S_lambda / phi) and
-# use the other stage as an offset; interactions are built from Main_CS only.
+# the null smooths enter every projection as B with precision S_lambda / phi
+# (Vp / phi of the GAM); interactions are built from Main_CS only.
 Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint, max.iter, min.iter, max.eps,
     susie_para_main, susie_para_int, verbose = TRUE, n_threads = 1, x_noncs_var = 0.1, w_noncs_var = 0.1,
     noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, int_suggested_coverage = NULL,
@@ -18,8 +18,6 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
     g <- c()
     err <- Inf
     beta <- rep(0, p)
-    etaX <- 0
-    etaW <- 0
     XCS <- NULL
     WCS <- NULL
     XCS_refit <- NULL
@@ -36,8 +34,11 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         pseudo_response <- work$pseudo_response
         W_diag <- work$weights
         S_null <- gam_null_penalty(null$fit, fit_final) / work$phi0
-        ssX <- weighted_projected_suffstats(X = X, y = pseudo_response - etaW, ZI = B, weights = W_diag,
-            nuisance_precision = S_null, n_threads = n_threads,
+        ZI_main <- cbind(B, WCS_refit)
+        P_main <- diag(c(rep(0, ncol(B)), projection_penalty_precision(WCS_refit, fitX, fitW)), ncol(ZI_main))
+        P_main[seq_len(ncol(B)), seq_len(ncol(B))] <- S_null
+        ssX <- weighted_projected_suffstats(X = X, y = pseudo_response, ZI = ZI_main, weights = W_diag,
+            nuisance_precision = P_main, n_threads = n_threads,
             block_size = suff_block_size)
         XtX <- {
             ssX$XtX
@@ -81,8 +82,11 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
             fitW <- NULL
         }
         else {
-            ssW <- weighted_projected_suffstats(W, pseudo_response - etaX, B, W_diag,
-              nuisance_precision = S_null,
+            ZI_int <- cbind(B, XCS_refit)
+            P_int <- diag(c(rep(0, ncol(B)), projection_penalty_precision(XCS_refit, fitX, fitW)), ncol(ZI_int))
+            P_int[seq_len(ncol(B)), seq_len(ncol(B))] <- S_null
+            ssW <- weighted_projected_suffstats(W, pseudo_response, ZI_int, W_diag,
+              nuisance_precision = P_int,
               n_threads = n_threads, block_size = suff_block_size)
             WtW <- ssW$XtX
             Wty <- ssW$Xty
