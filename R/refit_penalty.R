@@ -242,7 +242,8 @@ stop("Every penalized refit term must occur in both rhs and data.")
 }
 
 X_pen <- as.matrix(data[, penalty_names, drop = FALSE])
-dat <- data[, setdiff(names(data), penalty_names), drop = FALSE]
+# keep the CS columns when a formula is given: s(z, by = Main_CS) needs them
+dat <- if (is.null(formula)) data[, setdiff(names(data), penalty_names), drop = FALSE] else data
 dat$X_pen <- I(X_pen)
 rhs <- c(setdiff(rhs, penalty_names), "X_pen")
 PP <- list(X_pen = list(
