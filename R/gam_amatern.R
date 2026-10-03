@@ -21,10 +21,7 @@ gam_amatern_nk <- function(x) {
 min(300L, as.integer(floor(0.3 * length(unique(x)))))
 }
 
-# m = 2: null space (1, z) for the main effect s(z). m = 1: null space is the
-# intercept only, used for the interaction s(z, by = Main_CS), where the
-# intercept is dropped and the whole curve, linear trend included, is penalized.
-gam_amatern_base <- function(x, k = 10L, grid_size = 5000L, m = 2L) {
+gam_amatern_base <- function(x, k = 10L, grid_size = 5000L) {
 x <- as.numeric(x)
 ux <- sort(unique(x))
 nk <- gam_amatern_nk(x)
@@ -37,7 +34,8 @@ grid <- if (length(ux) <= grid_size) ux else
   stats::quantile(x, seq(0, 1, length.out = grid_size), names = FALSE)
 kappa <- gam_kappa_quantile(x, nk)
 lambda <- 10 * stats::sd(x)
-A <- cbind(1, grid)[, seq_len(m), drop = FALSE]
+m <- 2L
+A <- cbind(1, grid)
 mb <- gam_matern_basis(grid, kappa, lambda)
 C <- cbind(A, mb$DX)
 G <- crossprod(C, A) / nrow(C)
@@ -55,7 +53,7 @@ list(kappa = kappa, lambda = lambda, Qv = Qv, S = S, m = m)
 
 gam_amatern_predict <- function(base, x) {
 x <- as.numeric(x)
-A <- cbind(1, x)[, seq_len(base$m), drop = FALSE]
+A <- cbind(1, x)
 cbind(A, cbind(A, gam_matern_basis(x, base$kappa, base$lambda)$DX) %*% base$Qv)
 }
 
@@ -68,17 +66,21 @@ S <- base$S
 # A numeric by-variable multiplies the whole basis, so its constant column
 # would duplicate the by-variable's own main effect: drop it, leaving z as the
 # unpenalized null space of the varying coefficient.
+# For the interaction smooth s(z, by = Main_CS) (xt$drop_lin) the linear part
+# X*z enters the refit separately with the SuSiE ridge 1/V, so the whole null
+# space is dropped and only the penalized Matern part remains.
 drop_const <- !identical(object$by, "NA")
-if (drop_const) {
-X <- X[, -1L, drop = FALSE]
-S <- S[-1L, -1L, drop = FALSE]
+ndrop <- if (drop_const) 1L + isTRUE(object$xt$drop_lin) else 0L
+if (ndrop) {
+X <- X[, -seq_len(ndrop), drop = FALSE]
+S <- S[-seq_len(ndrop), -seq_len(ndrop), drop = FALSE]
 object$C <- matrix(0, 0L, ncol(X))
 }
 object$X <- X
 object$S <- list(S)
 object$base <- base
-object$drop_const <- drop_const
-object$null.space.dim <- base$m - drop_const
+object$ndrop <- ndrop
+object$null.space.dim <- base$m - ndrop
 object$rank <- ncol(X) - object$null.space.dim
 object$df <- ncol(X)
 object$bs.dim <- ncol(X)
@@ -89,5 +91,5 @@ object
 #' @export
 Predict.matrix.s4iAM.smooth <- function(object, data) {
 X <- gam_amatern_predict(object$base, data[[object$term]])
-if (isTRUE(object$drop_const)) X[, -1L, drop = FALSE] else X
+if (object$ndrop) X[, -seq_len(object$ndrop), drop = FALSE] else X
 }

@@ -123,19 +123,19 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                   }
                 }
             }
-            # An Int CS whose z (z or f(z)) is smooth in the null model is refitted as s(z, by = Xi).
+            # An Int CS whose z (z or f(z)) is smooth in the null model is refitted as the linear
+            # Xi*z (column Int_CSk, SuSiE ridge 1/V) plus the penalized Matern part s(z, by = Xi).
             csw <- susie_cs_list(fitW)
             zw <- sub("^f\\((.*)\\)$", "\\1", sub("\\*Main_CS[0-9]+$", "", colnames(W)))
             for (k in seq_along(csw$index)) {
-                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(environment(null$formula)$.s4i_ibases)]
+                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(environment(null$formula)$.s4i_bases)]
                 if (length(v)) {
                     v <- v[which.max(fitW$alpha[csw$index[k], v])]
                     int_smooth[paste0("Int_CS", csw$index[k])] <- paste0("s(", zw[v], "):", sub("^.*\\*", "", colnames(W)[v]))
                 }
             }
-            if (!is.null(int_smooth)) {
-                WCS_refit <- WCS_refit[, !colnames(WCS_refit) %in% names(int_smooth), drop = FALSE]
-                if (!ncol(WCS_refit)) WCS_refit <- NULL
+            for (cs in names(int_smooth)) {
+                WCS_refit[, cs] <- XCS[, sub("^.*:", "", int_smooth[cs])] * Z[, sub("^s\\((.*)\\):.*$", "\\1", int_smooth[cs])]
             }
         }
         fml_refit <- null$formula
@@ -143,7 +143,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
             zs <- sub("^s\\((.*)\\):.*$", "\\1", int_smooth)
             xs <- sub("^.*:", "", int_smooth)
             fml_refit <- stats::update(null$formula, stats::as.formula(paste(". ~ . +", paste(unique(sprintf(
-                "s(%s, by = %s, bs = \"s4iAM\", xt = list(base = .s4i_ibases[[\"%s\"]]))", zs, xs, zs)), collapse = " + "))))
+                "s(%s, by = %s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]], drop_lin = TRUE))", zs, xs, zs)), collapse = " + "))))
         }
         pred <- if (!is.null(WCS_refit)) {
             mgcv_predictor_data(Xextra = cbind(XCS_refit, WCS_refit), n = n)
@@ -204,12 +204,6 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
     }
     fit_final$n_eff <- work$n_eff
     G <- tryCatch(summary(fit_final)$p.table, error = function(e) NULL)
-    if (!is.null(int_smooth)) {
-        St <- summary(fit_final)$s.table[int_smooth, , drop = FALSE]
-        St[, 1:3] <- NA
-        rownames(St) <- names(int_smooth)
-        G <- rbind(G, St)
-    }
     MainIndex <- Identifying_MainEffect(fitX, colnames(X))
     MainIndex <- safe_add_p(MainIndex, G)
     IntIndex <- Identifying_IntEffect(fitW, colnames(W))

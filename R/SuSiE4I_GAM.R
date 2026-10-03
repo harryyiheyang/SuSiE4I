@@ -88,12 +88,8 @@ cols[[v]] <- colnames(D)
 
 env <- new.env(parent = environment(formula))
 env$.s4i_bases <- list()
-env$.s4i_ibases <- list()
 sterm <- function(z, by, kz) {
-if (is.null(env$.s4i_bases[[z]])) {
-env$.s4i_bases[[z]] <- gam_amatern_base(new[[z]], k = kz)
-env$.s4i_ibases[[z]] <- gam_amatern_base(new[[z]], k = kz, m = 1L)
-}
+if (is.null(env$.s4i_bases[[z]])) env$.s4i_bases[[z]] <- gam_amatern_base(new[[z]], k = kz)
 sprintf("s(%s%s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]]))", z,
         if (is.null(by)) "" else paste0(", by = ", by), z)
 }
