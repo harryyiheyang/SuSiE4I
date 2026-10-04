@@ -85,14 +85,14 @@ still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 
 \item{int_suggested_coverage}{Coverage used for interaction-stage
 components that do not form a credible set. Every such component that
-SuSiE did not kill (prior variance above zero) enters the refit; its
-refit term is built from its coverage set at this level, purified by
-dropping members with absolute correlation below `min_abs_corr` to the
-lead. It is reported in `interaction_discoveries` as suggested
-(`InCS = FALSE`) only when the purified set is the lead alone with
-posterior probability at least this value; `Coverage` gives the CS
-coverage or the purified coverage. `NULL` (default) uses 0.8 when
-`groupint_ind` is given and disables this otherwise; `FALSE` disables it.}
+SuSiE did not kill (prior variance above zero) is reported in
+`interaction_discoveries` with `InCS = FALSE`, with no PIP threshold. Its
+variables are its coverage set at this level, purified by dropping
+members with absolute correlation below `min_abs_corr` to the lead;
+`Coverage` gives the CS coverage or the purified coverage. With
+`groupint_ind`, these components also enter the refit (default 0.8);
+without it they are reported only (coverage 0.8, `Pvalue` is `NA`) and
+the refit is unchanged. `FALSE` keeps them out of the refit.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}
