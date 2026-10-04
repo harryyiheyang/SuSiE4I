@@ -560,6 +560,8 @@ p   <- rep(NA_real_, length(cs))
 p[!is.na(pos)] <- Coefmat[pos[!is.na(pos)], 4]
 
 idx$Pvalue <- p
+# Keep InCS as the last column so it is not lost when a wide table wraps.
+if ("InCS" %in% names(idx)) idx <- idx[, c(setdiff(names(idx), "InCS"), "InCS")]
 idx
 }
 
