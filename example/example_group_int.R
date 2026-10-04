@@ -31,6 +31,6 @@ fit <- SuSiE4I(
 
 fit$main_discoveries
 # Each selected interaction names the specific levels involved.
-# InCS = FALSE marks non-killed components without a credible set; Coverage is the CS
+# InCS = FALSE marks refit components without a credible set; Coverage is the CS
 # coverage or the purified coverage at coverage_nonkilled.
 fit$interaction_discoveries[, c("Pair", "CS", "PIP", "InCS", "Coverage", "Pvalue")]

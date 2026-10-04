@@ -83,7 +83,7 @@ if (!is.null(fit) && !is.null(fit$sets$cs) && length(fit$sets$cs)) {
 index <- as.integer(fit$sets$cs_index)
 vars <- lapply(fit$sets$cs, as.integer)
 }
-if (isTRUE(fit$suggested$refit) && length(fit$suggested$index)) {
+if (!is.null(fit$suggested) && length(fit$suggested$index)) {
 index <- c(index, fit$suggested$index)
 vars <- c(vars, fit$suggested$vars)
 }
@@ -95,8 +95,8 @@ list(index = index[ord], vars = vars[ord])
 # Interaction components that did not form a CS but were not killed by SuSiE
 # (prior variance V above prior_tol). Each one is purified like a CS: take its
 # coverage set at suggested_coverage and keep the members with
-# |r| >= min_abs_corr to the lead. All of them are reported with InCS = FALSE;
-# they enter the refit (built from the purified set) only when refit is TRUE.
+# |r| >= min_abs_corr to the lead. A component whose purified coverage still
+# reaches suggested_coverage enters the refit and is reported with InCS = FALSE.
 find_suggested_components <- function(fit, XtX, min_abs_corr,
                                       suggested_coverage, prior_tol = 1e-9) {
 out <- list(index = integer(0), vars = list(), coverage = numeric(0))
@@ -117,6 +117,7 @@ S <- o[seq_len(k)]
 S <- S[!(S %in% taken)]
 r <- XtX[lead, S] / (d[lead] * d[S])
 P <- S[abs(r) >= min_abs_corr]
+if (sum(fit$alpha[l, P]) < suggested_coverage) next
 out$index <- c(out$index, l)
 out$vars <- c(out$vars, list(P))
 out$coverage <- c(out$coverage, sum(fit$alpha[l, P]))
@@ -127,13 +128,6 @@ out
 
 Identifying_CSEffect <- function(fit, nam, prefix) {
 cs <- susie_cs_list(fit)
-if (!is.null(fit$suggested) && !isTRUE(fit$suggested$refit) &&
-    length(fit$suggested$index)) {
-index <- c(cs$index, fit$suggested$index)
-vars <- c(cs$vars, fit$suggested$vars)
-ord <- order(index)
-cs <- list(index = index[ord], vars = vars[ord])
-}
 if (!length(cs$index)) return(NULL)
 S <- lapply(seq_along(cs$index), function(k) {
 i <- cs$index[k]
@@ -994,8 +988,7 @@ args
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
                              residual_variance = NULL,
-                             nonkilled_coverage = 0.8,
-                             nonkilled_refit = FALSE) {
+                             nonkilled_coverage = NULL) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
@@ -1014,15 +1007,15 @@ if (is.null(fit$sets$requested_coverage) ||
                      fit$cs_config$coverage))) {
 stop("The fitted SuSiE requested coverage does not match its effective CS configuration.")
 }
-# Every interaction stage reports its non-killed non-CS components; they enter
-# the refit only when nonkilled_refit is TRUE (groupint_ind).
+# Interaction stages also refit non-killed non-CS components that reach
+# nonkilled_coverage (default: the smaller of the CS coverage and 0.8).
 if (identical(stage, "int")) {
+if (is.null(nonkilled_coverage)) nonkilled_coverage <- min(fit$cs_config$coverage, 0.8)
 fit$suggested <- find_suggested_components(
 fit, structural$XtX,
 min_abs_corr = fit$cs_config$min_abs_corr,
 suggested_coverage = nonkilled_coverage
 )
-fit$suggested$refit <- isTRUE(nonkilled_refit)
 }
 fit
 }

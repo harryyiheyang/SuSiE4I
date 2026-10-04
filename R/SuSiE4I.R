@@ -38,16 +38,15 @@
 #'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 #'   (levels) on each side. Not supported with `select_env = TRUE`.
 #' @param coverage_nonkilled Coverage for interaction-stage components that
-#'   do not form a credible set, kept separate from the credible-set
-#'   `coverage` in `susie_para_int`. Every such component that SuSiE did not
-#'   kill (prior variance above zero) is reported in `interaction_discoveries`
-#'   with `InCS = FALSE`, with no PIP threshold. Its variables are its
-#'   coverage set at this level, purified by dropping members with absolute
-#'   correlation below `min_abs_corr` to the lead; `Coverage` gives the CS
-#'   coverage or the purified coverage. With `groupint_ind` these components
-#'   also enter the refit, built from the purified set; without it they are
-#'   reported only (`Pvalue` is `NA`) and the refit is unchanged. Main effects
-#'   always require a credible set.
+#'   do not form a credible set. A component SuSiE did not kill (prior
+#'   variance above zero) takes its coverage set at this level, purified by
+#'   dropping members with absolute correlation below `min_abs_corr` to the
+#'   lead; if the purified set still reaches this coverage, the component
+#'   enters the refit and is reported in `interaction_discoveries` with
+#'   `InCS = FALSE`. Other non-CS components are neither refit nor reported.
+#'   `NULL` (default) uses the smaller of the interaction CS coverage
+#'   (`susie_para_int$coverage`) and 0.8. Main effects always require a
+#'   credible set.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -102,7 +101,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
-                    groupint_ind = NULL, coverage_nonkilled = 0.8,
+                    groupint_ind = NULL, coverage_nonkilled = NULL,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,

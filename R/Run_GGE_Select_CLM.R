@@ -8,7 +8,7 @@ Run_GGE_Select_CLM <- function(X, Z, y, clm_link,
                                 noncs_max_abs_cor = 0.9,
                                 include_x_squared = FALSE,
                                 suff_block_size = 10000L,
-                                coverage_nonkilled = 0.8, returnModel = FALSE) {
+                                coverage_nonkilled = NULL, returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   ridge <- 1e-8
   eta_clip_range <- c(-50, 50)
