@@ -37,16 +37,17 @@
 #'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 #'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 #'   (levels) on each side. Not supported with `select_env = TRUE`.
-#' @param int_suggested_coverage Coverage used for interaction-stage
-#'   components that do not form a credible set. Every such component that
-#'   SuSiE did not kill (prior variance above zero) is reported in
-#'   `interaction_discoveries` with `InCS = FALSE`, with no PIP threshold. Its
-#'   variables are its coverage set at this level, purified by dropping
-#'   members with absolute correlation below `min_abs_corr` to the lead;
-#'   `Coverage` gives the CS coverage or the purified coverage. With
-#'   `groupint_ind`, these components also enter the refit (default 0.8);
-#'   without it they are reported only (coverage 0.8, `Pvalue` is `NA`) and
-#'   the refit is unchanged. `FALSE` keeps them out of the refit.
+#' @param coverage_nonkilled Coverage for interaction-stage components that
+#'   do not form a credible set, kept separate from the credible-set
+#'   `coverage` in `susie_para_int`. Every such component that SuSiE did not
+#'   kill (prior variance above zero) is reported in `interaction_discoveries`
+#'   with `InCS = FALSE`, with no PIP threshold. Its variables are its
+#'   coverage set at this level, purified by dropping members with absolute
+#'   correlation below `min_abs_corr` to the lead; `Coverage` gives the CS
+#'   coverage or the purified coverage. With `groupint_ind` these components
+#'   also enter the refit, built from the purified set; without it they are
+#'   reported only (`Pvalue` is `NA`) and the refit is unchanged. Main effects
+#'   always require a credible set.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -101,7 +102,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
-                    groupint_ind = NULL, int_suggested_coverage = NULL,
+                    groupint_ind = NULL, coverage_nonkilled = 0.8,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,
@@ -153,7 +154,7 @@ colnames(Z)[bad_z] <- sub("^Main_", "MaIn_", colnames(Z)[bad_z])
 }
 
 if (!is.null(groupint_ind) && missing(L_int)) L_int <- 10
-int_suggested_coverage <- resolve_int_suggested_coverage(int_suggested_coverage, groupint_ind)
+check_coverage_nonkilled(coverage_nonkilled)
 
 is_binary_response <- function(v) {
 vv <- unique(stats::na.omit(v))
@@ -184,7 +185,7 @@ status <- as.integer(status)
 if (length(status) != n) stop("Length(status) must equal nrow(X).")
 if (is.null(Z)) {
 return(Run_GG_Cox(
-X = X, y = y, status = status,
+X = X, y = y, coverage_nonkilled = coverage_nonkilled, status = status,
 Lmain = L_main, Lint = L_int,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
 susie_para_main = susie_para_main,
@@ -201,7 +202,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select_Cox(
-X = X, Z = Z, y = y, status = status,
+X = X, Z = Z, y = y, coverage_nonkilled = coverage_nonkilled, status = status,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -218,7 +219,7 @@ returnModel = returnModel
 }
 return(Run_GGE_Cox(
 X = X, Z = Z, groupint_ind = groupint_ind,
-int_suggested_coverage = int_suggested_coverage, y = y, status = status,
+coverage_nonkilled = coverage_nonkilled, y = y, status = status,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -259,7 +260,7 @@ ocat_family <- mgcv::ocat(R = y_info$ncat)
 }
 if (is.null(Z)) {
 return(Run_GG_OCAT(
-X = X, y = y, family = ocat_family,
+X = X, y = y, coverage_nonkilled = coverage_nonkilled, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int,
@@ -277,7 +278,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select_OCAT(
-X = X, Z = Z, y = y, family = ocat_family,
+X = X, Z = Z, y = y, coverage_nonkilled = coverage_nonkilled, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
@@ -296,7 +297,7 @@ returnModel = returnModel
 }
 return(Run_GGE_OCAT(
 X = X, Z = Z, groupint_ind = groupint_ind,
-int_suggested_coverage = int_suggested_coverage, y = y, family = ocat_family,
+coverage_nonkilled = coverage_nonkilled, y = y, family = ocat_family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
@@ -315,7 +316,7 @@ returnModel = returnModel
 
 if (is.null(Z)) {
 return(Run_GG_CLM(
-X = X, y = y, clm_link = ordinal_link,
+X = X, y = y, coverage_nonkilled = coverage_nonkilled, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -331,7 +332,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select_CLM(
-X = X, Z = Z, y = y, clm_link = ordinal_link,
+X = X, Z = Z, y = y, coverage_nonkilled = coverage_nonkilled, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -348,7 +349,7 @@ returnModel = returnModel
 }
 return(Run_GGE_CLM(
 X = X, Z = Z, groupint_ind = groupint_ind,
-int_suggested_coverage = int_suggested_coverage, y = y, clm_link = ordinal_link,
+coverage_nonkilled = coverage_nonkilled, y = y, clm_link = ordinal_link,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -384,7 +385,7 @@ stop("family must be NULL, a supported string, or a GLM family object.")
 if (identical(family$family, "gaussian") && identical(family$link, "identity")) {
 if (is.null(Z)) {
 return(Run_GG(
-X = X, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+X = X, y = y, coverage_nonkilled = coverage_nonkilled, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -401,7 +402,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select(
-X = X, Z = Z, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+X = X, Z = Z, y = y, coverage_nonkilled = coverage_nonkilled, mgcv_model = mgcv_model, crossprodX = crossprodX,
 L.init = L.init,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
@@ -419,7 +420,7 @@ returnModel = returnModel
 }
 return(Run_GGE(
 X = X, Z = Z, groupint_ind = groupint_ind,
-int_suggested_coverage = int_suggested_coverage, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
+coverage_nonkilled = coverage_nonkilled, y = y, mgcv_model = mgcv_model, crossprodX = crossprodX,
 include_x_squared = include_x_squared,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,
 max.iter = max_iter, max.eps = max_eps, min.iter = min_iter,
@@ -437,7 +438,7 @@ returnModel = returnModel
 
 if (is.null(Z)) {
 return(Run_GG_GLM(
-X = X, y = y, family = family,
+X = X, y = y, coverage_nonkilled = coverage_nonkilled, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int,
@@ -455,7 +456,7 @@ returnModel = returnModel
 }
 if (select_env) {
 return(Run_GGE_Select_GLM(
-X = X, Z = Z, y = y, family = family,
+X = X, Z = Z, y = y, coverage_nonkilled = coverage_nonkilled, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, Lenv = L_env,
@@ -473,7 +474,7 @@ returnModel = returnModel
 }
 Run_GGE_GLM(
 X = X, Z = Z, groupint_ind = groupint_ind,
-int_suggested_coverage = int_suggested_coverage, y = y, family = family,
+coverage_nonkilled = coverage_nonkilled, y = y, family = family,
 include_x_squared = include_x_squared,
 mgcv_model = mgcv_model,
 Lmain = L_main, Lint = L_int, noint_env = noint_env,

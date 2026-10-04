@@ -8,7 +8,7 @@ Run_GGE_Select_CLM <- function(X, Z, y, clm_link,
                                 noncs_max_abs_cor = 0.9,
                                 include_x_squared = FALSE,
                                 suff_block_size = 10000L,
-                                returnModel = FALSE) {
+                                coverage_nonkilled = 0.8, returnModel = FALSE) {
   run_start <- proc.time()[["elapsed"]]
   ridge <- 1e-8
   eta_clip_range <- c(-50, 50)
@@ -163,7 +163,7 @@ Run_GGE_Select_CLM <- function(X, Z, y, clm_link,
           XtX = ssW$XtX, Xty = ssW$Xty, yty = ssW$yty,
           n = n, L = Lint
         ),
-        susie_para = susie_para_int, stage = "int",
+        susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
         iter = iter, min.iter = min.iter
       )
       CSdt_w <- summary(fitW)$vars
