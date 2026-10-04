@@ -39,7 +39,7 @@
 #' @export
 SuSiE4I_GAM <- function(formula, data, X, family = gaussian(), mgcv_model = "gam", k = 10L,
                         scale_data = TRUE, n_threads = 4, L_main = 10, L_int = 5, noint_vars = NULL,
-                        int_suggested_coverage = NULL, include_x_squared = FALSE,
+                        coverage_nonkilled = 0.8, include_x_squared = FALSE,
                         susie_para_main = NULL, susie_para_int = NULL,
                         max_iter = 10, max_eps = 1e-5, min_iter = 2,
                         x_noncs_var = 0.1, w_noncs_var = 0.1, noncs_max_abs_cor = 0.9,
@@ -54,7 +54,7 @@ Run_GAM(X = X, null = null, family = family, mgcv_model = mgcv_model, Lmain = L_
         susie_para_int = .resolve_susie_para(susie_para_int, "susie_para_int"),
         verbose = verbose, n_threads = n_threads, x_noncs_var = x_noncs_var, w_noncs_var = w_noncs_var,
         noncs_max_abs_cor = noncs_max_abs_cor, include_x_squared = include_x_squared,
-        suff_block_size = suff_block_size, int_suggested_coverage = int_suggested_coverage,
+        suff_block_size = suff_block_size, coverage_nonkilled = coverage_nonkilled,
         returnModel = returnModel)
 }
 
