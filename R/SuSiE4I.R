@@ -154,7 +154,6 @@ colnames(Z)[bad_z] <- sub("^Main_", "MaIn_", colnames(Z)[bad_z])
 }
 
 if (!is.null(groupint_ind) && missing(L_int)) L_int <- 10
-check_coverage_nonkilled(coverage_nonkilled)
 
 is_binary_response <- function(v) {
 vv <- unique(stats::na.omit(v))
