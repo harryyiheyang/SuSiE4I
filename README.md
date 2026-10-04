@@ -128,16 +128,17 @@ group and column on each side of a selected interaction (`Group1`, `Term1`,
 `Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
 be read off directly. See `example/example_group_int.R`.
 
-Sparse level-by-level cells often leave the true interaction with posterior
-probability above 0.8 but below the 95% needed for a credible set. When
-`groupint_ind` is given, every interaction component that SuSiE did not kill
-(prior variance above zero) enters the refit even without a credible set. Its
-refit term is built from its coverage set at `int_suggested_coverage`
-(default 0.8), purified by dropping members with absolute correlation below
-`min_abs_corr` to the lead. Such a component is reported as *suggested*
-(`InCS = FALSE`, with its `Coverage`) only when the purified set is the lead
-alone with posterior probability at least `int_suggested_coverage`; the others
-only adjust the refit. Main effects still require a credible set. With `groupint_ind`, `L_int`
+Every interaction component that SuSiE did not kill (prior variance above
+zero) is listed in `interaction_discoveries`, with `InCS` saying whether it
+formed a credible set; there is no PIP threshold. For a component without a
+credible set, the listed variables are its coverage set at
+`int_suggested_coverage` (default 0.8), purified by dropping members with
+absolute correlation below `min_abs_corr` to the lead, and `Coverage` is that
+purified coverage. Without `groupint_ind` these rows are reported only (their
+`Pvalue` is `NA`) and the refit is unchanged. With `groupint_ind`, sparse
+level-by-level cells often stay below the 95% needed for a credible set, so
+these components also enter the refit, built from the purified set.
+Main effects still require a credible set. With `groupint_ind`, `L_int`
 defaults to 10.
 
 ## Refit Summaries
