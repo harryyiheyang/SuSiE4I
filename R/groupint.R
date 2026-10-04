@@ -75,10 +75,3 @@ IntIndex$Term2 <- t2
 IntIndex$Pair <- paste(label(g1, t1), label(g2, t2), sep = " x ")
 IntIndex
 }
-
-check_coverage_nonkilled <- function(x) {
-if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0 || x > 1) {
-stop("coverage_nonkilled must be a number in (0, 1].")
-}
-invisible(TRUE)
-}
