@@ -3,7 +3,7 @@
 # (Vp / phi of the GAM); interactions are built from Main_CS only.
 Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint, max.iter, min.iter, max.eps,
     susie_para_main, susie_para_int, verbose = TRUE, n_threads = 1, x_noncs_var = 0.1, w_noncs_var = 0.1,
-    noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, coverage_nonkilled = 0.8,
+    noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, coverage_nonkilled = NULL,
     returnModel = FALSE) {
     run_start <- proc.time()[["elapsed"]]
     n <- nrow(X)

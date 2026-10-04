@@ -39,7 +39,7 @@
 #' @export
 SuSiE4I_GAM <- function(formula, data, X, family = gaussian(), mgcv_model = "gam", k = 10L,
                         scale_data = TRUE, n_threads = 4, L_main = 10, L_int = 5, noint_vars = NULL,
-                        coverage_nonkilled = 0.8, include_x_squared = FALSE,
+                        coverage_nonkilled = NULL, include_x_squared = FALSE,
                         susie_para_main = NULL, susie_para_int = NULL,
                         max_iter = 10, max_eps = 1e-5, min_iter = 2,
                         x_noncs_var = 0.1, w_noncs_var = 0.1, noncs_max_abs_cor = 0.9,
