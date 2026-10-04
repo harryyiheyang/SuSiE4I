@@ -8,7 +8,7 @@ Run_GGE_Select_Cox <- function(X, Z, y, status,
                                noncs_max_abs_cor = 0.9,
                                include_x_squared = FALSE,
                                suff_block_size = 10000L,
-                               returnModel = FALSE) {
+                               coverage_nonkilled = 0.8, returnModel = FALSE) {
 
   run_start <- proc.time()[["elapsed"]]
   n <- length(y)
@@ -135,7 +135,7 @@ Run_GGE_Select_Cox <- function(X, Z, y, status,
       structural = list(
         XtX = ssW$XtX, Xty = ssW$Xty, yty = n - 1, n = n, L = Lint
       ),
-      susie_para = susie_para_int, stage = "int",
+      susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
       iter = iter, min.iter = min.iter
     )
     CSdt_w <- summary(fitW)$vars

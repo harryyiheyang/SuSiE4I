@@ -9,7 +9,7 @@ Run_GGE_Cox <- function(X, Z, y, status,
                         noncs_max_abs_cor = 0.9,
                         include_x_squared = FALSE,
                         suff_block_size = 10000L,
-                        groupint_ind = NULL, int_suggested_coverage = NULL,
+                        groupint_ind = NULL, coverage_nonkilled = 0.8,
                         returnModel = FALSE) {
 
 run_start <- proc.time()[["elapsed"]]
@@ -121,7 +121,7 @@ ssW <- cox_suffstat_block(W, eta, cbind(Z, XCS_refit), y, status,
                            block_size = suff_block_size)
 fitW <- .fit_susie_stage(
 structural = list(XtX = ssW$XtX, Xty = ssW$Xty, yty = n - 1, n = n, L = Lint),
-susie_para = susie_para_int, stage = "int", suggested_coverage = int_suggested_coverage,
+susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled, nonkilled_refit = !is.null(groupint_ind),
 iter = iter, min.iter = min.iter
 )
 

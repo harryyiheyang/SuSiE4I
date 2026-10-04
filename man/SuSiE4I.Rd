@@ -20,7 +20,7 @@ SuSiE4I(
   L_env = 10,
   noint_env = NULL,
   groupint_ind = NULL,
-  int_suggested_coverage = NULL,
+  coverage_nonkilled = 0.8,
   include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
@@ -83,16 +83,17 @@ still follow `noint_env`. `interaction_discoveries` gains `Group1`,
 `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
 (levels) on each side. Not supported with `select_env = TRUE`.}
 
-\item{int_suggested_coverage}{Coverage used for interaction-stage
-components that do not form a credible set. Every such component that
-SuSiE did not kill (prior variance above zero) is reported in
-`interaction_discoveries` with `InCS = FALSE`, with no PIP threshold. Its
-variables are its coverage set at this level, purified by dropping
-members with absolute correlation below `min_abs_corr` to the lead;
-`Coverage` gives the CS coverage or the purified coverage. With
-`groupint_ind`, these components also enter the refit (default 0.8);
-without it they are reported only (coverage 0.8, `Pvalue` is `NA`) and
-the refit is unchanged. `FALSE` keeps them out of the refit.}
+\item{coverage_nonkilled}{Coverage for interaction-stage components that
+do not form a credible set, kept separate from the credible-set
+`coverage` in `susie_para_int`. Every such component that SuSiE did not
+kill (prior variance above zero) is reported in `interaction_discoveries`
+with `InCS = FALSE`, with no PIP threshold. Its variables are its
+coverage set at this level, purified by dropping members with absolute
+correlation below `min_abs_corr` to the lead; `Coverage` gives the CS
+coverage or the purified coverage. With `groupint_ind` these components
+also enter the refit, built from the purified set; without it they are
+reported only (`Pvalue` is `NA`) and the refit is unchanged. Main effects
+always require a credible set.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}

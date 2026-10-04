@@ -1,6 +1,6 @@
 Run_GGE_Select_GLM <- function(X, Z, y, family = binomial(link = "logit"), mgcv_model = NULL, Lmain, Lenv, Lint,
     max.iter, min.iter, max.eps, susie_para_main, susie_para_int, susie_para_env, verbose = TRUE, n_threads = 1, x_noncs_var = 0.1,
-    w_noncs_var = 0.1, noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, L.init = 1, returnModel = FALSE) {
+    w_noncs_var = 0.1, noncs_max_abs_cor = 0.9, include_x_squared = FALSE, suff_block_size = 10000L, L.init = 1, coverage_nonkilled = 0.8, returnModel = FALSE) {
     run_start <- proc.time()[["elapsed"]]
     n <- NROW(y)
     p <- ncol(X)
@@ -128,7 +128,7 @@ Run_GGE_Select_GLM <- function(X, Z, y, family = binomial(link = "logit"), mgcv_
             Wty <- ssW$Xty
             yty4W <- ssW$yty
             fitW <- .fit_susie_stage(structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = max(0.95 * n, work$n_eff), L = Lint),
-                susie_para = susie_para_int, stage = "int", iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
+                susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled, iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
             CSdt_w <- summary(fitW)$vars
             cs_indices_w <- unique(CSdt_w$cs[CSdt_w$cs > 0])
             w_component <- build_component_design_from_fit(W, fitW, "Int_CS")

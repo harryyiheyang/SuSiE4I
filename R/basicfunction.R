@@ -994,7 +994,8 @@ args
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
                              residual_variance = NULL,
-                             suggested_coverage = NULL) {
+                             nonkilled_coverage = 0.8,
+                             nonkilled_refit = FALSE) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
@@ -1014,14 +1015,14 @@ if (is.null(fit$sets$requested_coverage) ||
 stop("The fitted SuSiE requested coverage does not match its effective CS configuration.")
 }
 # Every interaction stage reports its non-killed non-CS components; they enter
-# the refit only when suggested_coverage is given (groupint_ind).
+# the refit only when nonkilled_refit is TRUE (groupint_ind).
 if (identical(stage, "int")) {
 fit$suggested <- find_suggested_components(
 fit, structural$XtX,
 min_abs_corr = fit$cs_config$min_abs_corr,
-suggested_coverage = if (is.null(suggested_coverage)) 0.8 else suggested_coverage
+suggested_coverage = nonkilled_coverage
 )
-fit$suggested$refit <- !is.null(suggested_coverage)
+fit$suggested$refit <- isTRUE(nonkilled_refit)
 }
 fit
 }

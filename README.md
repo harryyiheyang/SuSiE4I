@@ -132,9 +132,9 @@ Every interaction component that SuSiE did not kill (prior variance above
 zero) is listed in `interaction_discoveries`, with `InCS` saying whether it
 formed a credible set; there is no PIP threshold. For a component without a
 credible set, the listed variables are its coverage set at
-`int_suggested_coverage` (default 0.8), purified by dropping members with
-absolute correlation below `min_abs_corr` to the lead, and `Coverage` is that
-purified coverage. Without `groupint_ind` these rows are reported only (their
+`coverage_nonkilled` (default 0.8, separate from the credible-set `coverage`),
+purified by dropping members with absolute correlation below `min_abs_corr` to
+the lead, and `Coverage` is that purified coverage. Without `groupint_ind` these rows are reported only (their
 `Pvalue` is `NA`) and the refit is unchanged. With `groupint_ind`, sparse
 level-by-level cells often stay below the 95% needed for a credible set, so
 these components also enter the refit, built from the purified set.
