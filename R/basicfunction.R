@@ -1002,6 +1002,9 @@ iter = iter, min.iter = min.iter, gaussian = gaussian,
 residual_variance = residual_variance
 )
 fit <- do.call(susieR::susie_ss, args)
+# susie_ss fits carry no intercept and every caller drops it; record 0 so
+# coef.susie() (susieR >= 0.16) does not print a hint on each call.
+if (is.null(fit$intercept) || isTRUE(is.na(fit$intercept))) fit$intercept <- 0
 fit$cs_config <- list(
 coverage = as.numeric(args$coverage),
 min_abs_corr = as.numeric(args$min_abs_corr)
