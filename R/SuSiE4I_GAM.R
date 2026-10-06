@@ -13,8 +13,9 @@
 #' Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
 #' written (with a warning); it is built once and reused. The exceptions are
 #' `bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
-#' level of a factor, first-difference penalty in level order); such a factor
-#' interacts through its centered contrasts. A factor `by` becomes
+#' level of a factor, first-difference penalty in level order). The centered
+#' contrasts of such a factor times a main-effect credible set form one group
+#' single effect (prior \eqn{V I/d}{V*I/d}, an `lfsr` per level). A factor `by` becomes
 #' a common smooth plus one varying-coefficient smooth per centered contrast; a
 #' numeric `by` gives a varying coefficient whose constant column is dropped.
 #' `te()`, `ti()` and `t2()` are not supported. All covariates (factor
@@ -128,8 +129,11 @@ fz <- rowSums(tt[, stats::na.omit(lab), drop = FALSE])
 Zint <- cbind(Zint, fz - mean(fz))
 colnames(Zint)[ncol(Zint)] <- paste0("f(", z, ")")
 }
+# The contrasts of a bs = "re" / "rw1" factor interact as one group single effect.
+zgroup <- rep(NA_character_, ncol(Zint))
+for (v in intersect(vapply(specs[keep], function(sp) sp$term, ""), int_vars)) zgroup[colnames(Zint) %in% cols[[v]]] <- v
 list(fit = fit, formula = fml, data = new, response = ig$response,
-     B = stats::predict(fit, type = "lpmatrix"), Zint = scale(Zint))
+     B = stats::predict(fit, type = "lpmatrix"), Zint = scale(Zint), zgroup = zgroup)
 }
 
 # S_lambda in the null-model coefficient layout, smoothing parameters taken
