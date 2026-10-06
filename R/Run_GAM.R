@@ -122,9 +122,19 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
             csw <- susie_cs_list(fitW)
             bases <- environment(null$formula)$.s4i_bases
             zw <- sub("^f\\((.*)\\)$", "\\1", sub("\\*Main_CS[0-9]+$", "", colnames(W)))
+            # An Int CS on a bs = "re" / "rw1" factor group is refitted by level (by): the group's
+            # contrasts times Xi as one block with the iid fixed penalty I / (c V), in place of Int_CSk.
             for (k in seq_along(csw$index)) {
                 v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(bases)]
-                if (length(v)) {
+                fg <- csw$vars[[k]][!is.na(null$zgroup[match(zw[csw$vars[[k]]], colnames(Z))])]
+                if (length(fg)) {
+                    fg <- fg[which.max(fitW$alpha[csw$index[k], fg])]
+                    cs <- paste0("Int_CS", csw$index[k])
+                    xk <- XCS[, sub("^.*\\*", "", colnames(W)[fg])]
+                    Gk <- xk * Z[, which(null$zgroup == null$zgroup[match(zw[fg], colnames(Z))]), drop = FALSE]
+                    G_pen[[paste0("G_", cs)]] <- list(X = Gk, P = diag(sum(Gk^2) / (n * refit_penalty_variance(fitX, fitW, cs)), ncol(Gk)))
+                    WCS_refit <- WCS_refit[, colnames(WCS_refit) != cs, drop = FALSE]
+                } else if (length(v)) {
                     v <- v[which.max(fitW$alpha[csw$index[k], v])]
                     cs <- paste0("Int_CS", csw$index[k])
                     xk <- XCS[, sub("^.*\\*", "", colnames(W)[v])]
@@ -137,6 +147,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                 }
             }
         }
+        if (!is.null(WCS_refit) && !ncol(WCS_refit)) WCS_refit <- NULL
         pred <- if (!is.null(WCS_refit)) {
             mgcv_predictor_data(Xextra = cbind(XCS_refit, WCS_refit), n = n)
         }
@@ -195,7 +206,10 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
             mgcv_model = mgcv_model, formula = null$formula, extra_pen = G_pen)
     }
     fit_final$n_eff <- work$n_eff
-    G <- tryCatch(summary(fit_final)$p.table, error = function(e) NULL)
+    G <- tryCatch(summary(fit_final), error = function(e) NULL)
+    # a factor-group Int CS takes the Wald P value of its whole block
+    gp <- if (!is.null(G$pTerms.table)) G$pTerms.table[grepl("^G_", rownames(G$pTerms.table)), 3, drop = FALSE] else NULL
+    G <- if (!is.null(G)) rbind(G$p.table, matrix(gp, length(gp), 4, dimnames = list(sub("^G_", "", rownames(gp)), NULL)))
     MainIndex <- Identifying_MainEffect(fitX, colnames(X))
     MainIndex <- safe_add_p(MainIndex, G)
     IntIndex <- Identifying_IntEffect(fitW, colnames(W))

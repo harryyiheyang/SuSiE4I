@@ -15,7 +15,9 @@
 #' `bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
 #' level of a factor, first-difference penalty in level order). The centered
 #' contrasts of such a factor times a main-effect credible set form one group
-#' single effect (prior \eqn{V I/d}{V*I/d}, an `lfsr` per level). A factor `by` becomes
+#' single effect (prior \eqn{V I/d}{V*I/d}, an `lfsr` per level); in the refit
+#' its credible set enters by level, as that block with the fixed penalty
+#' \eqn{\phi I/(cV)}{phi*I/(c*V)}, and gets the Wald P value of the block. A factor `by` becomes
 #' a common smooth plus one varying-coefficient smooth per centered contrast; a
 #' numeric `by` gives a varying coefficient whose constant column is dropped.
 #' `te()`, `ti()` and `t2()` are not supported. All covariates (factor
