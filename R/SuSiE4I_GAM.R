@@ -11,7 +11,10 @@
 #' are used. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 #'
 #' Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
-#' written (with a warning); it is built once and reused. A factor `by` becomes
+#' written (with a warning); it is built once and reused. The exceptions are
+#' `bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
+#' level of a factor, first-difference penalty in level order); such a factor
+#' interacts through its centered contrasts. A factor `by` becomes
 #' a common smooth plus one varying-coefficient smooth per centered contrast; a
 #' numeric `by` gives a varying coefficient whose constant column is dropped.
 #' `te()`, `ti()` and `t2()` are not supported. All covariates (factor
@@ -67,8 +70,9 @@ specs <- ig$smooth.spec
 if (any(vapply(specs, inherits, TRUE, what = c("tensor.smooth.spec", "t2.smooth.spec")))) {
 stop("te(), ti() and t2() are not supported; use univariate s() terms.")
 }
-if (!all(vapply(specs, inherits, TRUE, what = "AMatern.smooth.spec"))) {
-warning("All smooths use the adaptive Matern (AMatern) basis; other bs choices were replaced.", call. = FALSE)
+keep <- vapply(specs, inherits, TRUE, what = c("re.smooth.spec", "rw1.smooth.spec"))
+if (!all(keep | vapply(specs, inherits, TRUE, what = "AMatern.smooth.spec"))) {
+warning("All smooths except bs = \"re\" and \"rw1\" use the adaptive Matern (AMatern) basis; other bs choices were replaced.", call. = FALSE)
 }
 par_vars <- attr(stats::terms(ig$pf), "term.labels")
 smooth_vars <- unique(vapply(specs, function(sp) sp$term, ""))
@@ -80,7 +84,7 @@ new <- data.frame(row.names = seq_len(nrow(data)))
 new[[ig$response]] <- data[[ig$response]]
 cols <- list()
 for (v in all_vars) {
-if (is.numeric(data[[v]])) {
+if (is.numeric(data[[v]]) && !(v %in% vapply(specs[keep], function(sp) sp$term, ""))) {
 new[[v]] <- data[[v]] - mean(data[[v]])
 cols[[v]] <- v
 } else {
@@ -88,6 +92,7 @@ f <- as.factor(data[[v]])
 D <- stats::model.matrix(~ f)[, -1L, drop = FALSE]
 colnames(D) <- make.names(paste0(v, levels(f)[-1L]), unique = TRUE)
 for (j in colnames(D)) new[[j]] <- D[, j] - mean(D[, j])
+new[[v]] <- f
 cols[[v]] <- colnames(D)
 }
 }
@@ -100,7 +105,8 @@ sprintf("s(%s%s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]]))", z,
         if (is.null(by)) "" else paste0(", by = ", by), z)
 }
 rhs <- unlist(cols[par_vars], use.names = FALSE)
-for (sp in specs) {
+for (sp in specs[keep]) rhs <- c(rhs, sprintf("s(%s, bs = \"%s\")", sp$term, if (inherits(sp, "re.smooth.spec")) "re" else "rw1"))
+for (sp in specs[!keep]) {
 kz <- if (sp$bs.dim > 0) sp$bs.dim else k
 if (identical(sp$by, "NA") || !is.numeric(data[[sp$by]])) rhs <- c(rhs, sterm(sp$term, NULL, kz))
 if (!identical(sp$by, "NA")) {
@@ -116,7 +122,7 @@ mgcv::bam(fml, data = new, family = family, method = "fREML", discrete = TRUE)
 int_vars <- setdiff(all_vars, noint_vars)
 Zint <- as.matrix(new[, unlist(cols[int_vars], use.names = FALSE), drop = FALSE])
 tt <- stats::predict(fit, type = "terms")
-for (z in intersect(smooth_vars, int_vars)) {
+for (z in intersect(vapply(specs[!keep], function(sp) sp$term, ""), int_vars)) {
 lab <- vapply(fit$smooth, function(sm) if (sm$term == z) sm$label else NA_character_, "")
 fz <- rowSums(tt[, stats::na.omit(lab), drop = FALSE])
 Zint <- cbind(Zint, fz - mean(fz))

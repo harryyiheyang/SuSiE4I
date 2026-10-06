@@ -122,7 +122,10 @@ are used. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 }
 \details{
 Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
-written (with a warning); it is built once and reused. A factor `by` becomes
+written (with a warning); it is built once and reused. The exceptions are
+`bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
+level of a factor, first-difference penalty in level order); such a factor
+interacts through its centered contrasts. A factor `by` becomes
 a common smooth plus one varying-coefficient smooth per centered contrast; a
 numeric `by` gives a varying coefficient whose constant column is dropped.
 `te()`, `ti()` and `t2()` are not supported. All covariates (factor

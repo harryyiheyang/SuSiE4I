@@ -89,3 +89,26 @@ Predict.matrix.s4iAM.smooth <- function(object, data) {
 X <- gam_amatern_predict(object$base, data[[object$term]])
 if (isTRUE(object$drop_const)) X[, -1L, drop = FALSE] else X
 }
+
+# bs = "rw1": one column per level, first-difference (RW1) penalty in
+# level order; its null space (the constant) is removed by mgcv's centering.
+#' @export
+smooth.construct.rw1.smooth.spec <- function(object, data, knots) {
+f <- as.factor(data[[object$term]])
+K <- nlevels(f)
+D <- diff(diag(K))
+object$X <- stats::model.matrix(~ f - 1)
+object$S <- list(crossprod(D))
+object$levels <- levels(f)
+object$null.space.dim <- 1L
+object$rank <- K - 1L
+object$df <- K
+object$bs.dim <- K
+class(object) <- c("rw1.smooth", "mgcv.smooth")
+object
+}
+
+#' @export
+Predict.matrix.rw1.smooth <- function(object, data) {
+stats::model.matrix(~ f - 1, data.frame(f = factor(data[[object$term]], levels = object$levels)))
+}
