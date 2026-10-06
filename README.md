@@ -134,8 +134,14 @@ rate) in `interaction_discoveries`, which lists every level of a selected group
 with the group's `PIP` and names both sides (`Group1`, `Term1`, `Group2`,
 `Term2`, `Pair`). A group enters the refit as one column (its posterior
 direction), so `Pvalue` tests the whole group effect. When every group is a
-single column the interaction stage is `susieR::susie_ss` as before. See
-`example/example_group_int.R`.
+single column the interaction stage is `susieR::susie_ss` as before.
+
+For an ordinal factor (for example drinking frequency), mark its group with
+`attr(x, "type") <- "ordinal"`, listing the columns in level order with the
+omitted reference level lowest. That group then uses the first-difference
+(random-walk) precision `D'D` instead of `I`, scaled to trace 1 like `I / d`,
+which favors effects that change smoothly across levels; for `A x B` the shape
+is the Kronecker product of the two sides. See `example/example_group_int.R`.
 
 Interaction components that SuSiE did not kill (prior variance above zero)
 but that did not form a credible set can still enter the refit. Each one takes

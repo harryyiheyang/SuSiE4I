@@ -20,6 +20,7 @@ if (is.null(labels)) labels <- rep("", length(groupint_ind))
 labels[!nzchar(labels)] <- paste0("G", which(!nzchar(labels)))
 if (anyDuplicated(labels)) stop("groupint_ind names must be unique.")
 out <- rep(NA_character_, q)
+lev <- rep(NA_integer_, q)
 for (k in seq_along(groupint_ind)) {
 cols <- groupint_ind[[k]]
 pos <- if (is.character(cols)) match(cols, nm) else as.integer(cols)
@@ -30,7 +31,11 @@ if (anyDuplicated(pos) || any(!is.na(out[pos]))) {
 stop("A Z column appears in more than one groupint_ind group.")
 }
 out[pos] <- labels[k]
+lev[pos] <- seq_along(pos)
 }
+# level order inside each group, and the groups marked attr(, "type") <- "ordinal"
+attr(out, "level") <- lev
+attr(out, "ordinal") <- labels[vapply(groupint_ind, function(x) identical(attr(x, "type"), "ordinal"), TRUE)]
 out
 }
 
@@ -80,12 +85,29 @@ IntIndex
 # Group id of each interaction column for the group single-effect fit. Columns
 # that pair the same two sides (a groupint_ind group or an ungrouped column on
 # each side, e.g. Main_CS1 x HapA) form one group; everything else is a
-# singleton.
+# singleton. With an ordinal group the result carries attr "Sigma0": per group,
+# the prior covariance shape, a product over the two sides of the RW1 kernel
+# min(k, l) (inverse of D'D, reference level first) for an ordinal side and I
+# otherwise, scaled to trace 1 (I / d when no side is ordinal).
 groupint_column_groups <- function(namW, z_names, groupint_ind) {
 if (is.null(groupint_ind) || is.null(namW)) return(NULL)
-key <- vapply(strsplit(namW, "*", fixed = TRUE), function(x) {
+parts <- strsplit(namW, "*", fixed = TRUE)
+key <- vapply(parts, function(x) {
 g <- groupint_ind[match(x, z_names)]
 paste(ifelse(is.na(g), x, g), collapse = "*")
 }, character(1))
-match(key, unique(key))
+grp <- match(key, unique(key))
+ord <- attr(groupint_ind, "ordinal")
+if (!length(ord)) return(grp)
+lev <- attr(groupint_ind, "level")
+attr(grp, "Sigma0") <- lapply(split(seq_along(grp), grp), function(ix) {
+S <- matrix(1, length(ix), length(ix))
+for (s in 1:2) {
+j <- match(vapply(parts[ix], `[`, "", s), z_names)
+if (is.na(groupint_ind[j[1]])) next
+S <- S * if (groupint_ind[j[1]] %in% ord) outer(lev[j], lev[j], pmin) else outer(lev[j], lev[j], "==")
+}
+S / sum(diag(S))
+})
+grp
 }

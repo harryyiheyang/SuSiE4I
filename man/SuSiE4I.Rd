@@ -87,6 +87,10 @@ lists every level of a selected group with the group's `PIP` and the
 per-level `lfsr`, which identifies the interacting levels, and gains
 `Group1`, `Term1`, `Group2`, `Term2` and `Pair`. The refit uses one column
 per group (its posterior direction), so `Pvalue` tests the whole group.
+A group marked `attr(x, "type") <- "ordinal"` (columns in level order,
+the omitted reference level lowest) uses the first-difference (RW1)
+precision `D'D` instead of `I`, so effects that change smoothly across
+levels are favored; the prior shape is scaled to trace 1 like `I / d`.
 Not supported with `select_env = TRUE`.}
 
 \item{coverage_nonkilled}{Coverage for interaction-stage components that

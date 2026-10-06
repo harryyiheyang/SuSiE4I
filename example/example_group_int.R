@@ -34,3 +34,10 @@ fit$main_discoveries
 # InCS = FALSE marks refit components without a credible set; Coverage is the CS
 # coverage or the purified coverage at coverage_nonkilled.
 fit$interaction_discoveries[, c("Pair", "CS", "PIP", "lfsr", "Coverage", "Pvalue", "InCS")]
+
+# An ordinal factor (levels in order, reference lowest) gets the random-walk prior.
+gi <- list(HapA = colnames(DA), HapB = colnames(DB))
+attr(gi$HapA, "type") <- "ordinal"
+fit_ord <- SuSiE4I(X = X, Z = Z, y = y, family = "gaussian", groupint_ind = gi,
+                   L_main = 5, verbose = FALSE)
+fit_ord$interaction_discoveries[, c("Pair", "CS", "PIP", "lfsr", "Pvalue", "InCS")]

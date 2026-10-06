@@ -4,8 +4,9 @@
 #
 # group[j] is the group id of column j. All columns of a group (e.g. one main
 # CS times every level of a factor) form ONE candidate with prior
-# beta_g ~ N(0, V I / d_g), d_g = number of columns, so V is the total prior
-# variance of the group effect. Levels inside a group do not compete for the
+# beta_g ~ N(0, V Sigma0_g), Sigma0_g = I / d_g (d_g = number of columns) or the
+# trace-1 RW1 shape of an ordinal group (attr "Sigma0" of group), so V is the
+# total prior variance of the group effect. Levels inside a group do not compete for the
 # lbf or alpha; the level is identified by its lfsr. With singleton groups this
 # is susie_ss. The fit is returned at column level (alpha and pip of a column
 # are those of its group) so the downstream CS / refit code works unchanged.
@@ -26,20 +27,23 @@ ix <- split(seq_len(p), group)
 G <- length(ix)
 gid <- match(group, as.integer(names(ix)))
 d <- lengths(ix)
-eg <- lapply(ix, function(j) eigen(XtX[j, j, drop = FALSE], symmetric = TRUE))
+S0 <- attr(group, "Sigma0")
+# beta_g = Lg u with u ~ N(0, V I), Lg Lg' = Sigma0_g
+Lg <- lapply(seq_len(G), function(g) if (is.null(S0)) diag(1 / sqrt(d[g]), d[g]) else t(chol(S0[[g]])))
+eg <- lapply(seq_len(G), function(g) eigen(crossprod(Lg[[g]], XtX[ix[[g]], ix[[g]], drop = FALSE] %*% Lg[[g]]), symmetric = TRUE))
 lam <- lapply(eg, function(e) pmax(e$values, 0))
 s2 <- if (is.null(residual_variance)) yty / (n - 1) else residual_variance
 V0 <- scaled_prior_variance * yty / (n - 1)
 logsum <- function(x) { m <- max(x); m + log(sum(exp(x - m))) }
-# per-group log BF under N(0, V I / d) and the posterior given the group
+# per-group log BF under N(0, V Sigma0_g) and the posterior given the group
 ser <- function(V, z, post = FALSE) {
 out <- numeric(G)
 for (g in seq_len(G)) {
-a <- d[g] / V + lam[[g]] / s2
-qz <- drop(crossprod(eg[[g]]$vectors, z[ix[[g]]])) / s2
-out[g] <- 0.5 * sum(qz^2 / a) - 0.5 * sum(log(a)) - 0.5 * d[g] * log(V / d[g])
+a <- 1 / V + lam[[g]] / s2
+qz <- drop(crossprod(eg[[g]]$vectors, crossprod(Lg[[g]], z[ix[[g]]]))) / s2
+out[g] <- 0.5 * sum(qz^2 / a) - 0.5 * sum(log(a)) - 0.5 * d[g] * log(V)
 if (post) {
-Q <- eg[[g]]$vectors
+Q <- Lg[[g]] %*% eg[[g]]$vectors
 m[ix[[g]]] <<- drop(Q %*% (qz / a))
 v[ix[[g]]] <<- drop((Q^2) %*% (1 / a))
 eq[g] <<- sum(lam[[g]] * (qz / a)^2) + sum(lam[[g]] / a)
