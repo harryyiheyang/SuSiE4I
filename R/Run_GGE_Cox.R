@@ -9,7 +9,7 @@ Run_GGE_Cox <- function(X, Z, y, status,
                         noncs_max_abs_cor = 0.9,
                         include_x_squared = FALSE,
                         suff_block_size = 10000L,
-                        groupint_ind = NULL, coverage_nonkilled = 0.8,
+                        groupint_ind = NULL, coverage_nonkilled = NULL,
                         returnModel = FALSE) {
 
 run_start <- proc.time()[["elapsed"]]
@@ -107,8 +107,7 @@ eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 
 XCS_W <- XCS_refit
 W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env,
-                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared,
-                               groupint_ind = groupint_ind)
+                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared)
 WCS <- NULL
 WCS_refit <- NULL
 if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
@@ -121,7 +120,8 @@ ssW <- cox_suffstat_block(W, eta, cbind(Z, XCS_refit), y, status,
                            block_size = suff_block_size)
 fitW <- .fit_susie_stage(
 structural = list(XtX = ssW$XtX, Xty = ssW$Xty, yty = n - 1, n = n, L = Lint),
-susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled, nonkilled_refit = !is.null(groupint_ind),
+susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
+groups = groupint_column_groups(colnames(W), colnames(Z), groupint_ind),
 iter = iter, min.iter = min.iter
 )
 

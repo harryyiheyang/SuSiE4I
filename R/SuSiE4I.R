@@ -21,33 +21,36 @@
 #' @param scale_data Whether to standardize `X` and `Z`.
 #' @param n_threads Number of threads used for cross-products.
 #' @param L_main Number of main-effect SuSiE components.
-#' @param L_int Number of interaction SuSiE components. When `groupint_ind` is
-#'   given and `L_int` is not supplied, 10 is used.
+#' @param L_int Number of interaction SuSiE components. With `groupint_ind`
+#'   each component selects a whole group.
 #' @param select_env Whether to fine-map columns of `Z`. Supported for all
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
-#' @param groupint_ind Optional list of at least two groups of `Z` columns,
-#'   given as column indices or names (for example the indicator columns of
-#'   each haplotype; a group may hold a single column). For every pair of
-#'   groups, each column of one group times each column of the other is added
-#'   to the interaction design as its own candidate; columns within a group are
-#'   never paired, and a product with `crossprod(x) / n < 1e-8` is skipped.
-#'   A column may belong to only one group. `Z` by main-effect interactions
-#'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
-#'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
-#'   (levels) on each side. Not supported with `select_env = TRUE`.
+#' @param groupint_ind Optional list of groups of `Z` columns, given as
+#'   column indices or names: the indicator columns of an unordered factor
+#'   such as sleep or drinking category, baseline level dropped. A column may
+#'   belong to only one group. The interaction columns of one group with one
+#'   main-effect CS form one group single effect with prior `N(0, V I / d)`
+#'   on its `d` columns; its joint Bayes factor competes with the other
+#'   candidates and its levels do not compete with each other. Other `Z`
+#'   columns stay single candidates, and `Z` by main-effect interactions
+#'   still follow `noint_env`. `interaction_discoveries` lists every level of
+#'   a selected group with the group's `PIP` and the per-level `lfsr` of that
+#'   single effect (reported as is; levels are compared with the dropped
+#'   baseline), and gains `Group1`, `Term1`, `Group2`, `Term2` and `Pair`.
+#'   The refit uses one column per group (its posterior direction), so
+#'   `Pvalue` tests the whole group. Not supported with `select_env = TRUE`.
 #' @param coverage_nonkilled Coverage for interaction-stage components that
-#'   do not form a credible set, kept separate from the credible-set
-#'   `coverage` in `susie_para_int`. Every such component that SuSiE did not
-#'   kill (prior variance above zero) is reported in `interaction_discoveries`
-#'   with `InCS = FALSE`, with no PIP threshold. Its variables are its
-#'   coverage set at this level, purified by dropping members with absolute
-#'   correlation below `min_abs_corr` to the lead; `Coverage` gives the CS
-#'   coverage or the purified coverage. With `groupint_ind` these components
-#'   also enter the refit, built from the purified set; without it they are
-#'   reported only (`Pvalue` is `NA`) and the refit is unchanged. Main effects
-#'   always require a credible set.
+#'   do not form a credible set. A component SuSiE did not kill (prior
+#'   variance above zero) takes its coverage set at this level, purified by
+#'   dropping members with absolute correlation below `min_abs_corr` to the
+#'   lead; if the purified set still reaches this coverage, the component
+#'   enters the refit and is reported in `interaction_discoveries` with
+#'   `InCS = FALSE`. Other non-CS components are neither refit nor reported.
+#'   `NULL` (default) uses the smaller of the interaction CS coverage
+#'   (`susie_para_int$coverage`) and 0.8. Main effects always require a
+#'   credible set.
 #' @param include_x_squared Whether to include squared main-effect summaries in
 #'   the interaction design.
 #' @param susie_para_main Named `susieR::susie_ss()` options for main effects.
@@ -102,7 +105,7 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     n_threads = 4,
                     L_main = 10, L_int = 5,
                     select_env = FALSE, L_env = 10, noint_env = NULL,
-                    groupint_ind = NULL, coverage_nonkilled = 0.8,
+                    groupint_ind = NULL, coverage_nonkilled = NULL,
                     include_x_squared = FALSE,
                     susie_para_main = NULL,
                     susie_para_int = NULL,
@@ -152,8 +155,6 @@ warning("Renaming Z column(s) starting with 'Main_' to 'MaIn_' to avoid collisio
 colnames(Z)[bad_z] <- sub("^Main_", "MaIn_", colnames(Z)[bad_z])
 }
 }
-
-if (!is.null(groupint_ind) && missing(L_int)) L_int <- 10
 
 is_binary_response <- function(v) {
 vv <- unique(stats::na.omit(v))

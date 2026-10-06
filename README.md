@@ -112,34 +112,39 @@ score-based sufficient statistics, SuSiE main-effect fitting, interaction
 construction from selected credible sets, SuSiE interaction fitting, and a
 final Cox partial-likelihood refit on the selected summaries.
 
-## Interactions Between Groups of Z Columns (Haplotypes)
+## Factor Variables in Z
 
-Factor-coded covariates such as haplotypes can be passed in `Z` as indicator
-columns, with `groupint_ind` listing which columns form each group, for
-example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"), HapB = "HB_b1")`
-(indices or names; at least two groups; a group may hold one column; no
-column in two groups). For every pair of groups, each column of one group
-times each column of the other becomes its own interaction candidate, and
-columns within a group are never paired. Products with `crossprod(x) / n`
-below `1e-8` are skipped. Interactions of `Z` with the main-effect credible
-sets are unchanged and follow `noint_env`. Selection in the interaction stage
-is unchanged (`susieR::susie_ss`), and `interaction_discoveries` names the
-group and column on each side of a selected interaction (`Group1`, `Term1`,
-`Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
-be read off directly. See `example/example_group_int.R`.
+An unordered factor (for example sleep or drinking category) can be passed in
+`Z` as indicator columns with the baseline level dropped, and `groupint_ind`
+lists which columns form each factor, for example
+`groupint_ind = list(Drink = c("dr_1", "dr_2", "dr_3"))` (indices or names; no
+column in two groups). The interaction columns of one factor with one
+main-effect credible set form ONE candidate in the interaction SuSiE: a group
+single effect with prior `N(0, V I / d)` on its `d` columns, so `V` is the total
+effect variance of the group. Its joint Bayes factor competes with the other
+candidates and the levels inside a group do not compete, so an effect spread
+over several levels is pooled into one direction. The interacting levels are
+described by the per-level `lfsr` (local false sign rate of that single
+effect, reported as is; levels are compared with the dropped baseline) in
+`interaction_discoveries`, which lists every level of a
+selected group with the group's `PIP` and names both sides (`Group1`, `Term1`,
+`Group2`, `Term2`, `Pair`). A group enters the refit as one column (its
+posterior direction), so `Pvalue` tests the whole group effect. An ordinal
+factor can instead enter `Z` as one score column, and haplotypes belong in `X`.
+See `example/example_group_int.R`.
 
-Every interaction component that SuSiE did not kill (prior variance above
-zero) is listed in `interaction_discoveries`, with `InCS` saying whether it
-formed a credible set; there is no PIP threshold. For a component without a
-credible set, the listed variables are its coverage set at
-`coverage_nonkilled` (default 0.8, separate from the credible-set `coverage`),
-purified by dropping members with absolute correlation below `min_abs_corr` to
-the lead, and `Coverage` is that purified coverage. Without `groupint_ind` these rows are reported only (their
-`Pvalue` is `NA`) and the refit is unchanged. With `groupint_ind`, sparse
-level-by-level cells often stay below the 95% needed for a credible set, so
-these components also enter the refit, built from the purified set.
-Main effects still require a credible set. With `groupint_ind`, `L_int`
-defaults to 10.
+Interaction components that SuSiE did not kill (prior variance above zero)
+but that did not form a credible set can still enter the refit. Each one takes
+its coverage set at `coverage_nonkilled`, purified by dropping members with
+absolute correlation below `min_abs_corr` to the lead; if the purified set
+still reaches `coverage_nonkilled`, the component enters the refit (built from
+the purified set) and is listed in `interaction_discoveries` with
+`InCS = FALSE` (the last column) and its `Coverage`. Components that do not
+enter the refit are not listed. `coverage_nonkilled` defaults to the smaller of
+the interaction CS coverage and 0.8. With `groupint_ind` the members are
+groups, and purity between two groups is their first canonical correlation.
+Main effects still require a credible set. With `groupint_ind`, each `L_int`
+component selects a whole group, so the default `L_int = 5` applies.
 
 ## Refit Summaries
 

@@ -1,17 +1,15 @@
 ###############################################################################
-# Pairwise interactions between groups of Z columns (e.g. haplotype dummies).
+# Factor groups in Z (groupint_ind).
 #
-# groupint_ind lists groups of Z columns. For every pair of different groups,
-# each column of one group times each column of the other is added to the
-# interaction design as its own candidate; columns within a group are never
-# paired. Z x main-CS interactions are unchanged and still follow noint_env.
+# groupint_ind lists groups of Z columns, e.g. the indicator columns of one
+# factor (baseline level dropped). Each Z column still interacts with the main
+# CSs (following noint_env); the interaction stage treats the columns that pair
+# one group with the same main CS as ONE group single effect (gsusie_ss).
 ###############################################################################
 
 normalize_groupint_ind <- function(groupint_ind, Z) {
 if (is.null(groupint_ind)) return(NULL)
-if (!is.list(groupint_ind) || length(groupint_ind) < 2L) {
-stop("groupint_ind must be a list of at least two groups of Z columns.")
-}
+if (!is.list(groupint_ind)) stop("groupint_ind must be a list of groups of Z columns.")
 q <- ncol(Z)
 nm <- colnames(Z)
 labels <- names(groupint_ind)
@@ -33,31 +31,8 @@ out[pos] <- labels[k]
 out
 }
 
-get_groupint_interactions <- function(Z, groupint_ind, min_xtx = 1e-8) {
-Z <- as.matrix(Z)
-nmZ <- colnames(Z)
-if (is.null(nmZ)) nmZ <- paste0("Z", seq_len(ncol(Z)))
-groups <- unique(stats::na.omit(groupint_ind))
-cols <- list()
-for (a in seq_len(length(groups) - 1L)) {
-for (b in (a + 1L):length(groups)) {
-for (i in which(groupint_ind == groups[a])) {
-for (j in which(groupint_ind == groups[b])) {
-v <- Z[, i] * Z[, j]
-if (sum(v^2) / length(v) < min_xtx) next
-cols[[paste0(nmZ[i], "*", nmZ[j])]] <- v
-}
-}
-}
-}
-if (!length(cols)) return(NULL)
-out <- do.call(cbind, cols)
-colnames(out) <- names(cols)
-out
-}
-
 # Name the group and column on each side of a selected interaction column,
-# e.g. HA_a1*HB_b2 -> HapA:HA_a1 x HapB:HB_b2.
+# e.g. dr_1*Main_CS1 -> Drink:dr_1 x Main_CS1.
 annotate_groupint_interactions <- function(IntIndex, z_names, groupint_ind) {
 if (is.null(groupint_ind) || is.null(IntIndex) || !nrow(IntIndex)) return(IntIndex)
 parts <- strsplit(as.character(IntIndex$Variable), "*", fixed = TRUE)
@@ -74,4 +49,16 @@ IntIndex$Group2 <- g2
 IntIndex$Term2 <- t2
 IntIndex$Pair <- paste(label(g1, t1), label(g2, t2), sep = " x ")
 IntIndex
+}
+
+# Group id of each interaction column for the group single-effect fit. Columns
+# that pair the same two sides (a groupint_ind group with a main CS, e.g.
+# Main_CS1 x Drink) form one group; every other column is a singleton.
+groupint_column_groups <- function(namW, z_names, groupint_ind) {
+if (is.null(groupint_ind) || is.null(namW)) return(NULL)
+key <- vapply(strsplit(namW, "*", fixed = TRUE), function(x) {
+g <- groupint_ind[match(x, z_names)]
+paste(ifelse(is.na(g), x, g), collapse = "*")
+}, character(1))
+match(key, unique(key))
 }
