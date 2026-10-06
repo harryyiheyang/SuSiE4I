@@ -112,37 +112,25 @@ score-based sufficient statistics, SuSiE main-effect fitting, interaction
 construction from selected credible sets, SuSiE interaction fitting, and a
 final Cox partial-likelihood refit on the selected summaries.
 
-## Interactions Between Groups of Z Columns (Haplotypes)
+## Factor Variables in Z
 
-Factor-coded covariates such as haplotypes can be passed in `Z` as indicator
-columns (baseline level dropped), with `groupint_ind` listing which columns
-form each group, for example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"),
-HapB = "HB_b1")` (indices or names; a group may hold one column; no column in
-two groups). Each group interacts with the main-effect credible sets, following
-`noint_env`. Groups marked `attr(x, "cross") <- TRUE` also interact with each
-other: for every pair of cross groups, each column of one times each column of
-the other is an interaction column, and columns within a group are never
-paired. Products with `crossprod(x) / n` below `1e-8` are skipped. Without at
-least two cross groups there are no `Z` by `Z` interactions.
-
-All columns that pair the same two sides (one group with a main-effect credible
-set, or two cross groups with each other) form ONE candidate in the interaction
-SuSiE: a group single effect with prior `N(0, V I / d)` on its `d` columns, so
-`V` is the total effect variance of the group. Its joint Bayes factor competes
-with the other candidates; the levels inside a group do not compete. The
-interacting levels are identified by the per-level `lfsr` (local false sign
-rate; a level interacts when `lfsr < 0.05`) in `interaction_discoveries`, which lists every level of a selected group
-with the group's `PIP` and names both sides (`Group1`, `Term1`, `Group2`,
-`Term2`, `Pair`). A group enters the refit as one column (its posterior
-direction), so `Pvalue` tests the whole group effect. When every group is a
-single column the interaction stage is `susieR::susie_ss` as before.
-
-For an ordinal factor (for example drinking frequency), mark its group with
-`attr(x, "type") <- "ordinal"`, listing the columns in level order with the
-omitted reference level lowest. That group then uses the first-difference
-(random-walk) precision `D'D` instead of `I`, scaled to trace 1 like `I / d`,
-which favors effects that change smoothly across levels; for `A x B` the shape
-is the Kronecker product of the two sides. See `example/example_group_int.R`.
+An unordered factor (for example sleep or drinking category) can be passed in
+`Z` as indicator columns with the baseline level dropped, and `groupint_ind`
+lists which columns form each factor, for example
+`groupint_ind = list(Drink = c("dr_1", "dr_2", "dr_3"))` (indices or names; no
+column in two groups). The interaction columns of one factor with one
+main-effect credible set form ONE candidate in the interaction SuSiE: a group
+single effect with prior `N(0, V I / d)` on its `d` columns, so `V` is the total
+effect variance of the group. Its joint Bayes factor competes with the other
+candidates and the levels inside a group do not compete, so an effect spread
+over several levels is pooled into one direction. The interacting levels are
+identified by the per-level `lfsr` (local false sign rate; a level interacts
+when `lfsr < 0.05`) in `interaction_discoveries`, which lists every level of a
+selected group with the group's `PIP` and names both sides (`Group1`, `Term1`,
+`Group2`, `Term2`, `Pair`). A group enters the refit as one column (its
+posterior direction), so `Pvalue` tests the whole group effect. An ordinal
+factor can instead enter `Z` as one score column, and haplotypes belong in `X`.
+See `example/example_group_int.R`.
 
 Interaction components that SuSiE did not kill (prior variance above zero)
 but that did not form a credible set can still enter the refit. Each one takes

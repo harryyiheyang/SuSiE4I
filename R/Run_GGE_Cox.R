@@ -107,8 +107,7 @@ eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 
 XCS_W <- XCS_refit
 W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env,
-                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared,
-                               groupint_ind = groupint_ind)
+                               include_x_squared = if (is.null(XCS)) FALSE else include_x_squared)
 WCS <- NULL
 WCS_refit <- NULL
 if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {

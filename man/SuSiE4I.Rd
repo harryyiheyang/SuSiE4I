@@ -73,28 +73,18 @@ outcome paths.}
 \item{noint_env}{Indices of `Z` columns excluded from interaction construction.}
 
 \item{groupint_ind}{Optional list of groups of `Z` columns, given as
-column indices or names (for example the indicator columns of each
-haplotype or other factor, baseline level dropped; a group may hold a
-single column). A column may belong to only one group. Each group
-interacts with the main-effect CSs. Groups marked
-`attr(x, "cross") <- TRUE` also interact with each other: for every pair
-of cross groups, each column of one times each column of the other is an
-interaction column (never within a group; a product with
-`crossprod(x) / n < 1e-8` is skipped). With fewer than two cross groups
-there are no `Z` by `Z` interactions. `Z` by main-effect interactions
-still follow `noint_env`. The columns that pair the same two sides (a
-group with a main-effect CS, or two cross groups) form one group single
-effect with prior
-`N(0, V I / d)`; its joint Bayes factor competes with the other candidates
-and its levels do not compete with each other. `interaction_discoveries`
-lists every level of a selected group with the group's `PIP` and the
-per-level `lfsr` (a level interacts when `lfsr < 0.05`), and gains
-`Group1`, `Term1`, `Group2`, `Term2` and `Pair`. The refit uses one column
-per group (its posterior direction), so `Pvalue` tests the whole group.
-A group marked `attr(x, "type") <- "ordinal"` (columns in level order,
-the omitted reference level lowest) uses the first-difference (RW1)
-precision `D'D` instead of `I`, so effects that change smoothly across
-levels are favored; the prior shape is scaled to trace 1 like `I / d`.
+column indices or names: the indicator columns of an unordered factor
+such as sleep or drinking category, baseline level dropped. A column may
+belong to only one group. The interaction columns of one group with one
+main-effect CS form one group single effect with prior `N(0, V I / d)`
+on its `d` columns; its joint Bayes factor competes with the other
+candidates and its levels do not compete with each other. Other `Z`
+columns stay single candidates, and `Z` by main-effect interactions
+still follow `noint_env`. `interaction_discoveries` lists every level of
+a selected group with the group's `PIP` and the per-level `lfsr` (a level
+interacts when `lfsr < 0.05`), and gains `Group1`, `Term1`, `Group2`,
+`Term2` and `Pair`. The refit uses one column per group (its posterior
+direction), so `Pvalue` tests the whole group.
 Not supported with `select_env = TRUE`.}
 
 \item{coverage_nonkilled}{Coverage for interaction-stage components that

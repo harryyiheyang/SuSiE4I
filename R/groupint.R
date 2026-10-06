@@ -1,12 +1,10 @@
 ###############################################################################
-# Pairwise interactions between groups of Z columns (e.g. haplotype dummies).
+# Factor groups in Z (groupint_ind).
 #
-# groupint_ind lists groups of Z columns (factors). Only groups marked
-# attr(, "cross") <- TRUE are paired: for every pair of different cross groups,
-# each column of one times each column of the other is added to the
-# interaction design; columns within a group are never paired. Z x main-CS
-# interactions still follow noint_env. The interaction stage then treats the
-# columns that pair the same two sides as one group (gsusie_ss).
+# groupint_ind lists groups of Z columns, e.g. the indicator columns of one
+# factor (baseline level dropped). Each Z column still interacts with the main
+# CSs (following noint_env); the interaction stage treats the columns that pair
+# one group with the same main CS as ONE group single effect (gsusie_ss).
 ###############################################################################
 
 normalize_groupint_ind <- function(groupint_ind, Z) {
@@ -19,7 +17,6 @@ if (is.null(labels)) labels <- rep("", length(groupint_ind))
 labels[!nzchar(labels)] <- paste0("G", which(!nzchar(labels)))
 if (anyDuplicated(labels)) stop("groupint_ind names must be unique.")
 out <- rep(NA_character_, q)
-lev <- rep(NA_integer_, q)
 for (k in seq_along(groupint_ind)) {
 cols <- groupint_ind[[k]]
 pos <- if (is.character(cols)) match(cols, nm) else as.integer(cols)
@@ -30,42 +27,12 @@ if (anyDuplicated(pos) || any(!is.na(out[pos]))) {
 stop("A Z column appears in more than one groupint_ind group.")
 }
 out[pos] <- labels[k]
-lev[pos] <- seq_along(pos)
 }
-# level order inside each group, the groups marked attr(, "type") <- "ordinal",
-# and the groups marked attr(, "cross") <- TRUE
-attr(out, "level") <- lev
-attr(out, "ordinal") <- labels[vapply(groupint_ind, function(x) identical(attr(x, "type"), "ordinal"), TRUE)]
-attr(out, "cross") <- labels[vapply(groupint_ind, function(x) isTRUE(attr(x, "cross")), TRUE)]
-out
-}
-
-get_groupint_interactions <- function(Z, groupint_ind, min_xtx = 1e-8) {
-Z <- as.matrix(Z)
-nmZ <- colnames(Z)
-if (is.null(nmZ)) nmZ <- paste0("Z", seq_len(ncol(Z)))
-groups <- intersect(unique(stats::na.omit(groupint_ind)), attr(groupint_ind, "cross"))
-if (length(groups) < 2L) return(NULL)
-cols <- list()
-for (a in seq_len(length(groups) - 1L)) {
-for (b in (a + 1L):length(groups)) {
-for (i in which(groupint_ind == groups[a])) {
-for (j in which(groupint_ind == groups[b])) {
-v <- Z[, i] * Z[, j]
-if (sum(v^2) / length(v) < min_xtx) next
-cols[[paste0(nmZ[i], "*", nmZ[j])]] <- v
-}
-}
-}
-}
-if (!length(cols)) return(NULL)
-out <- do.call(cbind, cols)
-colnames(out) <- names(cols)
 out
 }
 
 # Name the group and column on each side of a selected interaction column,
-# e.g. HA_a1*HB_b2 -> HapA:HA_a1 x HapB:HB_b2.
+# e.g. dr_1*Main_CS1 -> Drink:dr_1 x Main_CS1.
 annotate_groupint_interactions <- function(IntIndex, z_names, groupint_ind) {
 if (is.null(groupint_ind) || is.null(IntIndex) || !nrow(IntIndex)) return(IntIndex)
 parts <- strsplit(as.character(IntIndex$Variable), "*", fixed = TRUE)
@@ -85,31 +52,13 @@ IntIndex
 }
 
 # Group id of each interaction column for the group single-effect fit. Columns
-# that pair the same two sides (a groupint_ind group or an ungrouped column on
-# each side, e.g. Main_CS1 x HapA) form one group; everything else is a
-# singleton. With an ordinal group the result carries attr "Sigma0": per group,
-# the prior covariance shape, a product over the two sides of the RW1 kernel
-# min(k, l) (inverse of D'D, reference level first) for an ordinal side and I
-# otherwise, scaled to trace 1 (I / d when no side is ordinal).
+# that pair the same two sides (a groupint_ind group with a main CS, e.g.
+# Main_CS1 x Drink) form one group; every other column is a singleton.
 groupint_column_groups <- function(namW, z_names, groupint_ind) {
 if (is.null(groupint_ind) || is.null(namW)) return(NULL)
-parts <- strsplit(namW, "*", fixed = TRUE)
-key <- vapply(parts, function(x) {
+key <- vapply(strsplit(namW, "*", fixed = TRUE), function(x) {
 g <- groupint_ind[match(x, z_names)]
 paste(ifelse(is.na(g), x, g), collapse = "*")
 }, character(1))
-grp <- match(key, unique(key))
-ord <- attr(groupint_ind, "ordinal")
-if (!length(ord)) return(grp)
-lev <- attr(groupint_ind, "level")
-attr(grp, "Sigma0") <- lapply(split(seq_along(grp), grp), function(ix) {
-S <- matrix(1, length(ix), length(ix))
-for (s in 1:2) {
-j <- match(vapply(parts[ix], `[`, "", s), z_names)
-if (is.na(groupint_ind[j[1]])) next
-S <- S * if (groupint_ind[j[1]] %in% ord) outer(lev[j], lev[j], pmin) else outer(lev[j], lev[j], "==")
-}
-S / sum(diag(S))
-})
-grp
+match(key, unique(key))
 }

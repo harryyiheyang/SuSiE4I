@@ -1,14 +1,5 @@
 get_pairwise_interactions <- function(W, Z = NULL, noint_env = NULL,
-                                      include_x_squared = FALSE,
-                                      groupint_ind = NULL) {
-if (!is.null(groupint_ind) && !is.null(Z)) {
-ZZ <- get_groupint_interactions(Z, groupint_ind)
-WZ <- get_pairwise_interactions(W, Z = Z, noint_env = noint_env,
-                                include_x_squared = include_x_squared)
-if (is.null(WZ)) return(ZZ)
-if (is.null(ZZ)) return(WZ)
-return(cbind(WZ, ZZ))
-}
+                                      include_x_squared = FALSE) {
 if (is.null(W)) return(NULL)
 W <- as.matrix(W)
 if (!is.logical(include_x_squared) || length(include_x_squared) != 1L ||

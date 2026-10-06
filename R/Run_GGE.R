@@ -101,8 +101,7 @@ Run_GGE <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain, Lint, 
         XCS_W <- XCS_refit
         W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
             FALSE
-        else include_x_squared,
-            groupint_ind = groupint_ind)
+        else include_x_squared)
         WCS <- NULL
         WCS_refit <- NULL
         if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {

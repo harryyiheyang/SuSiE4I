@@ -127,8 +127,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
       XCS_W <- XCS_refit
       W <- get_pairwise_interactions(
         XCS_W, Z = if (nZ > 0L) Z else NULL, noint_env = noint_env,
-        include_x_squared = if (main_no_cs) FALSE else include_x_squared,
-        groupint_ind = groupint_ind
+        include_x_squared = if (main_no_cs) FALSE else include_x_squared
       )
       if (!interaction_design_available(W, iter, min.iter, allow_empty = main_no_cs)) {
         W <- NULL
