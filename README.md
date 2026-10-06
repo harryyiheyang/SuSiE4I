@@ -141,8 +141,8 @@ still reaches `coverage_nonkilled`, the component enters the refit (built from
 the purified set) and is listed in `interaction_discoveries` with
 `InCS = FALSE` (the last column) and its `Coverage`. Components that do not
 enter the refit are not listed. `coverage_nonkilled` defaults to the smaller of
-the interaction CS coverage and 0.8. This helps sparse level-by-level cells,
-which often stay below the coverage needed for a credible set.
+the interaction CS coverage and 0.8. With `groupint_ind` the members are
+groups, and purity between two groups is their first canonical correlation.
 Main effects still require a credible set. With `groupint_ind`, each `L_int`
 component selects a whole group, so the default `L_int = 5` applies.
 
