@@ -38,7 +38,11 @@ SuSiE4I(
 )
 }
 \arguments{
-\item{X}{An n by p numeric predictor matrix.}
+\item{X}{An n by p numeric predictor matrix, or a `geno` object, or a list of
+arguments to `geno_open()` (`bedfile` or `pgenfile`, and
+optionally `snp_vec`, `sample_vec`, `impute`) that opens the genotypes
+without forming a dense n by p matrix in R; standardization follows
+`scale_data` and `crossprodX` is not needed.}
 
 \item{Z}{Optional n by q environmental-covariate matrix.}
 

@@ -197,12 +197,12 @@ as.numeric(v)
 }
 
 xtv <- function(X, v) {
-  if (inherits(X, "geno")) return(as.numeric(CppMatrix::geno_crossprod(X, v)))
+  if (inherits(X, "geno")) return(as.numeric(geno_crossprod(X, v)))
   as.vector(matrixMultiply(matrix(v, nrow = 1L), X))
 }
 
 xv <- function(X, B) {
-  if (inherits(X, "geno")) return(CppMatrix::geno_multiply(X, B))
+  if (inherits(X, "geno")) return(geno_multiply(X, B))
   if (is.null(dim(B))) matrixVectorMultiply(X, B) else matrixMultiply(X, B)
 }
 

@@ -148,14 +148,14 @@ component selects a whole group, so the default `L_int = 5` applies.
 
 ## Genotypes from PLINK files
 
-`X` may also be a list of arguments to `CppMatrix::geno_open()`, for example
+`X` may also be a list of arguments to `geno_open()` (this package), for example
 `X = list(bedfile = "chr1", snp_vec = snps, sample_vec = iids, impute = "mean")`
 (or `pgenfile = "chr1"` for PLINK 2). `snp_vec` and `sample_vec` select
 variants and samples by ID or file index, and `impute` is `"median"` (default)
 or `"mean"` for missing calls. The genotypes are kept in compact 2-bit form and
 every cross-product is computed from them, so `X` is never held as a dense
 `n` by `p` matrix in R; results match a dense `X` standardized with
-`scale_data = TRUE`.
+`scale_data = TRUE`. PGEN reading uses the bundled pgenlib (LGPL, from plink-ng), with its license files under `src/pgenlib`.
 
 ## Refit Summaries
 

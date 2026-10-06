@@ -8,7 +8,7 @@
 #' is produced for the returned formal model and downstream LBF calculations.
 #'
 #' @param X An n by p numeric predictor matrix, or a `geno` object, or a list of
-#'   arguments to `CppMatrix::geno_open()` (`bedfile` or `pgenfile`, and
+#'   arguments to `geno_open()` (`bedfile` or `pgenfile`, and
 #'   optionally `snp_vec`, `sample_vec`, `impute`) that opens the genotypes
 #'   without forming a dense n by p matrix in R; standardization follows
 #'   `scale_data` and `crossprodX` is not needed.
@@ -136,7 +136,7 @@ y <- as.numeric(y[, 1])
 
 if (!inherits(X, "geno")) {
 if (is.list(X) && !is.data.frame(X)) {
-X <- do.call(CppMatrix::geno_open, c(X, list(scale = scale_data, threads = n_threads)))
+X <- do.call(geno_open, c(X, list(scale = scale_data, threads = n_threads)))
 } else {
 X <- as.matrix(X)
 if (!is.numeric(X)) stop("X must be numeric.")

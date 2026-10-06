@@ -13,7 +13,7 @@
 #' @param block_size Unused; retained for backward compatibility.
 #' @export
 blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L) {
-  if (inherits(X, "geno")) return(CppMatrix::geno_crossprod(X))
+  if (inherits(X, "geno")) return(geno_crossprod(X))
   if (!is.matrix(X) || !is.numeric(X)) stop("X must be a numeric matrix.")
   if (!is.null(Z) && (!is.matrix(Z) || !is.numeric(Z))) {
     stop("Z must be a numeric matrix.")
@@ -66,7 +66,7 @@ reference_blas <- local({
 #' @export
 weighted_crossprod <- function(X, w, M = NULL, n_threads = 1L,
                                block_size = 10000L) {
-  if (inherits(X, "geno")) return(CppMatrix::geno_wcrossprod(X, w, M, block_size))
+  if (inherits(X, "geno")) return(geno_wcrossprod(X, w, M, block_size))
   if (!is.matrix(X) || !is.double(X)) X <- as.matrix(X) + 0
   M <- if (is.null(M)) matrix(0, nrow(X), 0L) else as.matrix(M) + 0
   n_threads <- max(1L, as.integer(n_threads))
