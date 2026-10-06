@@ -10,45 +10,57 @@
 
 #' Open a BED or PGEN file as a compact genotype matrix
 #'
+#' Keeps the genotypes of a PLINK BED or PGEN file in 2-bit form, so SuSiE4I
+#' never holds an n by p double matrix in R. Values are A1 (BED) or ALT (PGEN)
+#' allele counts as in BEDMatrix; multiallelic PGEN variants count all non-REF
+#' alleles.
+#'
 #' @param bedfile PLINK 1 BED path or prefix (`.bim` and `.fam` alongside).
 #' @param pgenfile PLINK 2 PGEN path or prefix (hardcall-only, uncompressed
 #'   `.pvar` and `.psam` alongside). Give either `bedfile` or `pgenfile`.
 #' @param snp_vec Variants to keep, as IDs or 1-based file indices, in the
-#'   column order wanted. `NULL` keeps all in file order.
+#'   column order wanted. `NULL` keeps all in file order. Selection by ID takes
+#'   the first match, so use indices when IDs are duplicated (e.g. ".").
 #' @param sample_vec Samples to keep, as IIDs (or `FID_IID`) or 1-based file
-#'   indices, in the row order wanted. `NULL` keeps all in file order.
+#'   indices, in the row order wanted. `NULL` keeps all in file order. The rows
+#'   of `y`, `Z` and `status` passed to `SuSiE4I()` must be in this order (or in
+#'   `.fam`/`.psam` order when `NULL`). IIDs repeated across families need the
+#'   `FID_IID` form.
 #' @param impute `"median"` (default, the variant's lower median) or `"mean"`
 #'   (the variant's observed mean; stores one more bit plane).
 #' @param scale Whether products and dense blocks are of the standardized
 #'   matrix.
 #' @param threads Number of OpenMP threads.
-#' @return An object of class `geno`.
+#' @return An object of class `geno` with fields `n`, `p`, `snp`, `sample`
+#'   (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
+#'   external pointer, so it is valid only in the current R session (it cannot
+#'   be saved with `saveRDS` or sent to parallel workers).
 #' @export
 geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
                       sample_vec = NULL, impute = c("median", "mean"),
                       scale = TRUE, threads = 4L) {
   impute <- match.arg(impute)
-  threads <- .geno_threads(threads)
+  threads <- as.integer(threads)
   if (is.null(bedfile) == is.null(pgenfile)) {
     stop("Give exactly one of bedfile and pgenfile.", call. = FALSE)
   }
   if (!is.null(bedfile)) {
-    bed <- .geno_bed_path(bedfile, "bedfile")
+    bed <- .geno_bed_path(bedfile)
     base <- sub("\\.bed$", "", bed)
-    bim <- utils::read.table(paste0(base, ".bim"), colClasses = "character",
-                             comment.char = "", quote = "")
-    fam <- utils::read.table(paste0(base, ".fam"), colClasses = "character",
-                             comment.char = "", quote = "")
+    bim <- data.table::fread(paste0(base, ".bim"), header = FALSE, colClasses = "character")
+    fam <- data.table::fread(paste0(base, ".fam"), header = FALSE, colClasses = "character")
     snp <- bim[[2L]]
     fid <- fam[[1L]]
     iid <- fam[[2L]]
   } else {
     files <- .geno_pgen_files(pgenfile)
-    variants <- .geno_variants(files$pvar)
-    snp <- variants$id
-    ids <- strsplit(.geno_samples(files$psam), "\t", fixed = TRUE)
-    fid <- vapply(ids, `[`, "", 1L)
-    iid <- vapply(ids, `[`, "", 2L)
+    pv <- data.table::fread(files$pvar, skip = "#CHROM", colClasses = "character")
+    snp <- pv[["ID"]]
+    allele_ct <- 1L + nchar(pv$ALT) - nchar(gsub(",", "", pv$ALT, fixed = TRUE))
+    ps <- data.table::fread(files$psam, colClasses = "character")
+    iid <- ps[[if ("#IID" %in% names(ps)) "#IID" else "IID"]]
+    fid_col <- intersect(c("#FID", "FID"), names(ps))
+    fid <- if (length(fid_col)) ps[[fid_col[1L]]] else rep("0", length(iid))
   }
   vidx <- .geno_index(snp_vec, snp, NULL, "snp_vec")
   sidx <- .geno_index(sample_vec, iid, paste(fid, iid, sep = "_"), "sample_vec")
@@ -56,7 +68,7 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
     geno_open_bed_cpp(bed, length(iid), length(snp), vidx - 1L, sidx - 1L,
                       impute == "mean", threads)
   } else {
-    geno_open_pgen_cpp(files$pgen, length(iid), variants$allele_ct,
+    geno_open_pgen_cpp(files$pgen, length(iid), allele_ct,
                        vidx - 1L, sidx - 1L, impute == "mean", threads)
   }
   info <- geno_info_cpp(ptr)
@@ -118,16 +130,7 @@ print.geno <- function(x, ...) {
 #' @export
 as.matrix.geno <- function(x, ...) x[, , drop = FALSE]
 
-#' Cross products of a geno matrix
-#'
-#' `geno_crossprod(X)` is `crossprod(X)` by exact popcount; `geno_crossprod(X, M)`
-#' is `crossprod(X, M)` for a dense `M` with one row per sample.
-#'
-#' @param X A `geno` object from [geno_open()].
-#' @param M Optional dense matrix (or vector) with one row per sample.
-#' @param threads Number of OpenMP threads.
-#' @return A p by p matrix when `M` is `NULL`, otherwise a p by `ncol(M)` matrix.
-#' @export
+# crossprod(X) by exact popcount, or crossprod(X, M) for a dense M with one row per sample.
 geno_crossprod <- function(X, M = NULL, threads = X$threads) {
   if (is.null(M)) {
     out <- geno_xtx_cpp(X$ptr, threads)
@@ -145,16 +148,7 @@ geno_crossprod <- function(X, M = NULL, threads = X$threads) {
   out
 }
 
-#' Multiply a geno matrix by a dense matrix or vector
-#'
-#' `geno_multiply(X, B)` is `X %*% B` for `B` with one row per variant; a
-#' vector `B` gives a vector.
-#'
-#' @param X A `geno` object from [geno_open()].
-#' @param B Dense matrix with one row per variant, or a numeric vector.
-#' @param threads Number of OpenMP threads.
-#' @return An n by `ncol(B)` matrix, or a numeric vector when `B` is a vector.
-#' @export
+# X %*% B for B with one row per variant; a vector B gives a vector.
 geno_multiply <- function(X, B, threads = X$threads) {
   vec <- is.null(dim(B))
   B <- as.matrix(B) + 0
@@ -168,17 +162,7 @@ geno_multiply <- function(X, B, threads = X$threads) {
   if (vec) as.numeric(out) else out
 }
 
-#' Row-chunked weighted cross products of a geno matrix
-#'
-#' Returns `crossprod(X, X * w)` and `crossprod(X, M)` from dense row blocks
-#' of at most `block_size` rows (capped so a block stays near 512 MB).
-#'
-#' @param X A `geno` object from [geno_open()].
-#' @param w Numeric vector of n row weights.
-#' @param M Optional dense matrix with one row per sample.
-#' @param block_size Maximum number of rows per dense block.
-#' @return A list with `XtWX` (p by p) and `XtM` (p by `ncol(M)`).
-#' @export
+# crossprod(X, X * w) and crossprod(X, M) from dense row blocks of at most block_size rows.
 geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   w <- as.numeric(w)
   M <- if (is.null(M)) matrix(0, X$n, 0L) else as.matrix(M) + 0
@@ -196,9 +180,9 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   list(XtWX = XtWX, XtM = XtM)
 }
 
-.geno_bed_path <- function(x, arg) {
+.geno_bed_path <- function(x) {
   if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
-    stop(arg, " must be a single BED file path or prefix.", call. = FALSE)
+    stop("bedfile must be one BED file path.", call. = FALSE)
   }
   if (!grepl("\\.bed$", x)) x <- paste0(x, ".bed")
   if (!file.exists(x)) stop("BED file not found: ", x, call. = FALSE)
@@ -213,10 +197,6 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   pgen <- paste0(prefix, ".pgen")
   pvar <- paste0(prefix, ".pvar")
   psam <- paste0(prefix, ".psam")
-  if (!file.exists(pvar) && file.exists(paste0(pvar, ".zst"))) {
-    stop("Decompress the .pvar.zst first, e.g. plink2 --pfile ", prefix,
-         " vzs --make-just-pvar --out ", prefix, call. = FALSE)
-  }
   for (path in c(pgen, pvar, psam)) {
     if (!file.exists(path)) stop("Required PGEN companion file is missing: ",
                                  path, call. = FALSE)
@@ -224,76 +204,4 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   list(pgen = normalizePath(pgen, mustWork = TRUE),
        pvar = normalizePath(pvar, mustWork = TRUE),
        psam = normalizePath(psam, mustWork = TRUE))
-}
-
-# First line that does not start with "##" and the number of lines up to and
-# including it.
-.geno_header <- function(path) {
-  con <- file(path, "r")
-  on.exit(close(con))
-  skip <- 0L
-  repeat {
-    line <- readLines(con, n = 1L, warn = FALSE)
-    if (!length(line)) return(list(line = NULL, skip = skip))
-    skip <- skip + 1L
-    if (!startsWith(line, "##")) return(list(line = line, skip = skip))
-  }
-}
-
-# Only the named columns of a header-described text file, as character.
-.geno_columns <- function(path, header, cols, keep, sep) {
-  classes <- rep("NULL", length(cols))
-  classes[cols %in% keep] <- "character"
-  utils::read.table(path, sep = sep, skip = header$skip, header = FALSE,
-                    colClasses = classes, col.names = cols,
-                    comment.char = "", quote = "",
-                    na.strings = character(0), check.names = FALSE)
-}
-
-.geno_samples <- function(path) {
-  header <- .geno_header(path)
-  if (is.null(header$line)) {
-    stop("PSAM must contain a header and at least one sample: ", path,
-         call. = FALSE)
-  }
-  cols <- strsplit(trimws(header$line), "[[:space:]]+")[[1L]]
-  iid_col <- if ("#IID" %in% cols) "#IID" else "IID"
-  if (!iid_col %in% cols) {
-    stop("PSAM is missing its IID column: ", path, call. = FALSE)
-  }
-  fid_col <- if ("#FID" %in% cols) "#FID" else "FID"
-  tab <- .geno_columns(path, header, cols, c(iid_col, fid_col), "")
-  if (!nrow(tab)) {
-    stop("PSAM must contain a header and at least one sample: ", path,
-         call. = FALSE)
-  }
-  fid <- if (fid_col %in% cols) tab[[fid_col]] else rep("0", nrow(tab))
-  paste(fid, tab[[iid_col]], sep = "\t")
-}
-
-# Variant IDs and allele counts (REF + ALTs) of a plain-text .pvar, in file
-# order. "##" lines are skipped; the "#CHROM" header line names the columns.
-.geno_variants <- function(path) {
-  header <- .geno_header(path)
-  if (is.null(header$line) || !startsWith(header$line, "#CHROM")) {
-    stop("PVAR must have a #CHROM header line: ", path, call. = FALSE)
-  }
-  cols <- strsplit(sub("^#", "", header$line), "\t", fixed = TRUE)[[1L]]
-  if (!all(c("ID", "ALT") %in% cols)) {
-    stop("PVAR header is missing its ID or ALT column: ", path, call. = FALSE)
-  }
-  tab <- .geno_columns(path, header, cols, c("ID", "ALT"), "\t")
-  if (!nrow(tab)) stop("PVAR file has no variants: ", path, call. = FALSE)
-  alt <- tab[["ALT"]]
-  n_alt <- nchar(alt) - nchar(gsub(",", "", alt, fixed = TRUE)) + 1L
-  list(id = tab[["ID"]], allele_ct = as.integer(1L + n_alt))
-}
-
-.geno_threads <- function(threads) {
-  if (!is.numeric(threads) || length(threads) != 1L || is.na(threads) ||
-      !is.finite(threads) || threads < 1 || threads != round(threads) ||
-      threads > .Machine$integer.max) {
-    stop("threads must be a single positive integer.", call. = FALSE)
-  }
-  as.integer(threads)
 }

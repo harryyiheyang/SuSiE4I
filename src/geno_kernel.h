@@ -1,10 +1,10 @@
 // Genotypes are held as two bit planes per variant, lo = [x == 1] and
 // hi = [x == 2], so that
 //   sum_k x_k y_k = pc(lo & lo') + 2 pc((lo & hi') | (hi & lo')) + 4 pc(hi & hi').
-// All sums are exact integers; r = (n G - s_a s_b) / sqrt(v_a v_b), with
-// v = n ss - s^2. Missing calls are filled with the variant's lower median.
-#ifndef CPPMATRIX_GENO_KERNEL_H
-#define CPPMATRIX_GENO_KERNEL_H
+// All sums are exact integers. Missing calls are filled with the variant's
+// lower median.
+#ifndef SUSIE4I_GENO_KERNEL_H
+#define SUSIE4I_GENO_KERNEL_H
 
 #include <Rcpp.h>
 #include <algorithm>
@@ -16,7 +16,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__)) && !defined(_WIN32)
 #include <immintrin.h>
 #define GENO_KERNEL_X86 1
 #endif
@@ -28,7 +28,7 @@ constexpr std::size_t kTile = 64;          // variants per tile side
 constexpr std::size_t kChunk = 512;        // 64-bit words per cache chunk
 
 struct Planes {
-  std::size_t m = 0, words = 0;       // words is a multiple of 4
+  std::size_t words = 0;              // words is a multiple of 4
   std::vector<u64> bits;              // variant j: lo at 2jW, hi at (2j+1)W
   std::vector<std::int64_t> s, v;     // sum x and n*sum x^2 - (sum x)^2
   const u64* lo(std::size_t j) const { return bits.data() + 2 * j * words; }
@@ -120,7 +120,6 @@ inline void encode_packed(const NibbleTable& table, const unsigned char* column,
 }
 
 inline void reset_planes(Planes& out, std::size_t n, std::size_t m) {
-  out.m = m;
   out.words = plane_words(n);
   out.bits.assign(2 * m * out.words, 0);
   out.s.assign(m, 0);
@@ -241,12 +240,10 @@ void tile_avx2(const Planes& A, std::size_t i0, std::size_t ni,
             for (int b = 0; b < 4; ++b)
               total[a][b] = _mm256_add_epi64(total[a][b], _mm256_sad_epu8(bytes[a][b], zero));
         }
-        #pragma GCC unroll 4
         for (std::size_t a = 0; a < 2 && a0 + a < ni; ++a)
-          #pragma GCC unroll 4
           for (std::size_t b = 0; b < 4 && b0 + b < nj; ++b) {
-            alignas(32) std::int64_t lanes[4];
-            _mm256_store_si256(reinterpret_cast<__m256i*>(lanes), total[a][b]);
+            std::int64_t lanes[4];
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(lanes), total[a][b]);
             acc[(a0 + a) * kTile + b0 + b] += lanes[0] + lanes[1] + lanes[2] + lanes[3];
           }
       }
@@ -262,10 +259,9 @@ TileKernel select_kernel() {
   return tile_generic;
 }
 
-void cor_block(const Planes& L, std::size_t ib, std::size_t pb,
+void dot_block(const Planes& L, std::size_t ib, std::size_t pb,
                const Planes& R, std::size_t jb, std::size_t qb, bool self,
-               double n, double* out, std::size_t ld, int threads,
-               TileKernel kernel, bool raw = false) {
+               double* out, std::size_t ld, int threads, TileKernel kernel) {
   const std::size_t ti = (pb + kTile - 1) / kTile, tj = (qb + kTile - 1) / kTile;
   #pragma omp parallel num_threads(threads)
   {
@@ -280,52 +276,12 @@ void cor_block(const Planes& L, std::size_t ib, std::size_t pb,
       for (std::size_t x = 0; x < ni; ++x)
         for (std::size_t y = 0; y < nj; ++y) {
           const std::size_t i = i0 + x, j = j0 + y;
-          const double va = static_cast<double>(L.v[i]);
-          const double vb = static_cast<double>(R.v[j]);
-          double r = NA_REAL;
-          if (raw) {
-            r = static_cast<double>(acc[x * kTile + y]);
-          } else if (va > 0 && vb > 0) {
-            r = (n * static_cast<double>(acc[x * kTile + y]) -
-                 static_cast<double>(L.s[i]) * static_cast<double>(R.s[j])) /
-              std::sqrt(va * vb);
-            r = std::min(1.0, std::max(-1.0, r));
-          }
+          const double r = static_cast<double>(acc[x * kTile + y]);
           out[(ib + i) + (jb + j) * ld] = r;
           if (self) out[(jb + j) + (ib + i) * ld] = r;
         }
     }
   }
-}
-
-constexpr double kPlaneBudget = 268435456; // bytes of bit planes per side
-
-template <class LoadA, class LoadB>
-Rcpp::NumericMatrix cor_driver(std::size_t p, std::size_t q, std::size_t n_samples,
-                               bool self, int threads, LoadA load_a, LoadB load_b) {
-  const TileKernel kernel = select_kernel();
-  const double n = static_cast<double>(n_samples);
-  const double plane_bytes = 2.0 * 8.0 * plane_words(n_samples);
-  const std::size_t block = std::max<std::size_t>(
-    kTile, static_cast<std::size_t>(kPlaneBudget / plane_bytes) / kTile * kTile);
-
-  Rcpp::NumericMatrix result(p, q);
-  double* out = result.begin();
-  Planes PA, PB;
-  for (std::size_t jb = 0; jb < q; jb += block) {
-    const std::size_t qb = std::min(block, q - jb);
-    load_b(jb, qb, PB);
-    for (std::size_t ib = 0; ib < (self ? jb + qb : p); ib += block) {
-      const std::size_t pb = std::min(block, p - ib);
-      const Planes* left = &PA;
-      if (self && ib == jb) left = &PB;
-      else if (self) load_b(ib, pb, PA);
-      else load_a(ib, pb, PA);
-      cor_block(*left, ib, pb, PB, jb, qb, self, n, out, p, threads, kernel);
-      Rcpp::checkUserInterrupt();
-    }
-  }
-  return result;
 }
 
 } // namespace

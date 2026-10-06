@@ -42,7 +42,9 @@ SuSiE4I(
 arguments to `geno_open()` (`bedfile` or `pgenfile`, and
 optionally `snp_vec`, `sample_vec`, `impute`) that opens the genotypes
 without forming a dense n by p matrix in R; standardization follows
-`scale_data` and `crossprodX` is not needed.}
+`scale_data` and `crossprodX` is not needed. `y`, `Z` and `status` must
+follow the sample order of the file, or of `sample_vec` when given; values
+are A1 (BED) or ALT (PGEN) allele counts.}
 
 \item{Z}{Optional n by q environmental-covariate matrix.}
 

@@ -13,7 +13,7 @@
 #' @param block_size Unused; retained for backward compatibility.
 #' @export
 blockwise_crossprod <- function(X, Z = NULL, n_threads = 4L, block_size = 10000L) {
-  if (inherits(X, "geno")) return(geno_crossprod(X))
+  if (inherits(X, "geno")) return(geno_crossprod(X, Z))
   if (!is.matrix(X) || !is.numeric(X)) stop("X must be a numeric matrix.")
   if (!is.null(Z) && (!is.matrix(Z) || !is.numeric(Z))) {
     stop("Z must be a numeric matrix.")

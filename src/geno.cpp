@@ -32,6 +32,14 @@ inline int omp_thread() {
 #endif
 }
 
+inline int omp_threads() {
+#ifdef _OPENMP
+  return omp_get_num_threads();
+#else
+  return 1;
+#endif
+}
+
 inline int resolve_threads(int threads) {
 #ifdef _OPENMP
   return threads <= 0 ? omp_get_max_threads() : threads;
@@ -84,7 +92,6 @@ void finish_stats(Geno& g) {
       const double obs = n - static_cast<double>(cm);
       mean = obs > 0 ? s / obs : 0.0;
       sumsq = v + static_cast<double>(cm) * mean * mean;
-      g.M.s[j] = cm;
     } else {
       mean = s / n;
       sumsq = (v + s * s) / n;
@@ -197,18 +204,17 @@ Rcpp::NumericMatrix geno_xtx_cpp(SEXP ptr, int threads) {
   threads = resolve_threads(threads);
   const TileKernel kernel = select_kernel();
   const std::size_t p = g->p;
-  const double n = static_cast<double>(g->n);
   Rcpp::NumericMatrix out(p, p);
-  cor_block(g->G, 0, p, g->G, 0, p, true, n, out.begin(), p, threads, kernel, true);
+  dot_block(g->G, 0, p, g->G, 0, p, true, out.begin(), p, threads, kernel);
   if (g->mean) {
     const std::vector<double>& mu = g->mu;
     Rcpp::NumericMatrix t(p, p);
-    cor_block(g->G, 0, p, g->M, 0, p, false, n, t.begin(), p, threads, kernel, true);
+    dot_block(g->G, 0, p, g->M, 0, p, false, t.begin(), p, threads, kernel);
     for (std::size_t b = 0; b < p; ++b)
       for (std::size_t a = 0; a < p; ++a)
         out[a + b * p] += t[a + b * p] * mu[b] + t[b + a * p] * mu[a];
     std::fill(t.begin(), t.end(), 0.0);
-    cor_block(g->M, 0, p, g->M, 0, p, true, n, t.begin(), p, threads, kernel, true);
+    dot_block(g->M, 0, p, g->M, 0, p, true, t.begin(), p, threads, kernel);
     for (std::size_t b = 0; b < p; ++b)
       for (std::size_t a = 0; a < p; ++a)
         out[a + b * p] += mu[a] * mu[b] * t[a + b * p];
@@ -260,7 +266,7 @@ Rcpp::NumericMatrix geno_xtm_cpp(SEXP ptr, const Rcpp::NumericMatrix& M, int thr
 Rcpp::NumericMatrix geno_mx_cpp(SEXP ptr, const Rcpp::NumericMatrix& B, int threads) {
   Rcpp::XPtr<Geno> g(ptr);
   threads = resolve_threads(threads);
-  const std::size_t n = g->n, p = g->p, W = g->G.words;
+  const std::size_t n = g->n, p = g->p;
   const std::size_t k = B.ncol();
   if (static_cast<std::size_t>(B.nrow()) != p) Rcpp::stop("B must have one row per variant.");
   Rcpp::NumericMatrix out(n, k);
@@ -273,7 +279,7 @@ Rcpp::NumericMatrix geno_mx_cpp(SEXP ptr, const Rcpp::NumericMatrix& B, int thre
   const std::size_t used_words = (n + 63) / 64;
   #pragma omp parallel num_threads(threads)
   {
-    const int nt = resolve_threads(threads), t = omp_thread();
+    const int nt = omp_threads(), t = omp_thread();
     const std::size_t w0 = used_words * t / nt, w1 = used_words * (t + 1) / nt;
     std::vector<double> bj(k);
     for (std::size_t j = 0; j < p; ++j) {

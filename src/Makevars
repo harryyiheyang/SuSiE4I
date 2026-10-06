@@ -3,6 +3,7 @@ CXX_STD = CXX17
 # src/pgenlib: unmodified pgenlib sources (plink-ng, LGPL >= 3); flags as in pgenlibr.
 PGENLIB_OBJECTS = pgenlib/pgenlib_misc.o pgenlib/pgenlib_read.o pgenlib/plink2_base.o \
   pgenlib/plink2_bits.o pgenlib/plink2_simd.o
+# OBJECTS is explicit because of the pgenlib subdirectory: add new src/*.cpp files here.
 OBJECTS = RcppExports.o cox_suffstat.o dense_parallel.o geno.o weighted_crossprod.o $(PGENLIB_OBJECTS)
 
 PKG_CPPFLAGS = -DNO_UNALIGNED -DPGENLIB_NOPRINT -Ipgenlib

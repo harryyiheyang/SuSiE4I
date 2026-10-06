@@ -1,7 +1,7 @@
 // PgenFile: hardcall-only PGEN reader on the bundled pgenlib, one PgenReader
-// per thread, shared by pgen_cor() and the geno object.
-#ifndef CPPMATRIX_PGEN_FILE_H
-#define CPPMATRIX_PGEN_FILE_H
+// per thread, used by the geno object.
+#ifndef SUSIE4I_PGEN_FILE_H
+#define SUSIE4I_PGEN_FILE_H
 
 #include <Rcpp.h>
 #include <memory>
@@ -108,42 +108,6 @@ public:
   }
 
   std::size_t samples() const { return header_.info.raw_sample_ct; }
-  std::size_t variants() const { return header_.info.raw_variant_ct; }
-
-  void load(std::size_t first, std::size_t m, Planes& out) {
-    const std::size_t n = samples(), stride = (n + 3) / 4;
-    reset_planes(out, n, m);
-    // pgenlib genovec codes: 0 hom REF, 1 het, 2 two non-REF alleles, 3 missing;
-    // 4 samples per byte, first sample in the low bits.
-    static const NibbleTable table({2, 1, 0, -1});
-    const int threads = static_cast<int>(readers_.size());
-    int failed = 0;
-    #pragma omp parallel for num_threads(threads) schedule(static)
-    for (std::ptrdiff_t k = 0; k < static_cast<std::ptrdiff_t>(m); ++k) {
-#ifdef _OPENMP
-      ThreadReader& r = *readers_[omp_get_thread_num()];
-#else
-      ThreadReader& r = *readers_[0];
-#endif
-      const std::size_t j = static_cast<std::size_t>(k);
-      const plink2::PglErr e =
-        plink2::PgrGet(nullptr, r.pssi, static_cast<uint32_t>(n),
-                       static_cast<uint32_t>(first + j), &r.pgr,
-                       reinterpret_cast<uintptr_t*>(r.genovec));
-      if (e != plink2::kPglRetSuccess) {
-        #pragma omp atomic write
-        failed = static_cast<int>(e);
-        continue;
-      }
-      encode_packed(table, r.genovec, n, stride, out.words,
-                    out.bits.data() + 2 * j * out.words,
-                    out.bits.data() + (2 * j + 1) * out.words, out.s[j], out.v[j]);
-    }
-    if (failed)
-      Rcpp::stop("Could not read PGEN file (pgenlib error " + std::to_string(failed) +
-                 "): " + path_);
-  }
-
   // Packed genovec of one variant (all samples, file order) read by one thread.
   const unsigned char* read(std::size_t variant, int thread) {
     ThreadReader& r = *readers_[thread];
@@ -172,7 +136,7 @@ private:
   }
 
   [[noreturn]] void fail_dosage() const {
-    Rcpp::stop("pgen_cor() requires hardcall-only PGEN files (no dosages): " + path_);
+    Rcpp::stop("PGEN files with dosages are not supported; use hardcall PGEN files: " + path_);
   }
 
   std::string path_;

@@ -21,10 +21,14 @@ geno_open(
 `.pvar` and `.psam` alongside). Give either `bedfile` or `pgenfile`.}
 
 \item{snp_vec}{Variants to keep, as IDs or 1-based file indices, in the
-column order wanted. `NULL` keeps all in file order.}
+column order wanted. `NULL` keeps all in file order. Selection by ID takes
+the first match, so use indices when IDs are duplicated (e.g. ".").}
 
 \item{sample_vec}{Samples to keep, as IIDs (or `FID_IID`) or 1-based file
-indices, in the row order wanted. `NULL` keeps all in file order.}
+indices, in the row order wanted. `NULL` keeps all in file order. The rows
+of `y`, `Z` and `status` passed to `SuSiE4I()` must be in this order (or in
+`.fam`/`.psam` order when `NULL`). IIDs repeated across families need the
+`FID_IID` form.}
 
 \item{impute}{`"median"` (default, the variant's lower median) or `"mean"`
 (the variant's observed mean; stores one more bit plane).}
@@ -35,8 +39,14 @@ matrix.}
 \item{threads}{Number of OpenMP threads.}
 }
 \value{
-An object of class `geno`.
+An object of class `geno` with fields `n`, `p`, `snp`, `sample`
+  (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
+  external pointer, so it is valid only in the current R session (it cannot
+  be saved with `saveRDS` or sent to parallel workers).
 }
 \description{
-Open a BED or PGEN file as a compact genotype matrix
+Keeps the genotypes of a PLINK BED or PGEN file in 2-bit form, so SuSiE4I
+never holds an n by p double matrix in R. Values are A1 (BED) or ALT (PGEN)
+allele counts as in BEDMatrix; multiallelic PGEN variants count all non-REF
+alleles.
 }

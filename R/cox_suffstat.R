@@ -63,8 +63,9 @@ cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
     for (start in seq.int(1L, n, by = rows)) {
       idx <- start:min(n, start + rows - 1L)
       G <- Xblk[ord[idx], , drop = FALSE]
-      S1 <- matrix(apply(G * w[ord[idx]], 2L, cumsum), nrow = length(idx)) +
-        rep(carry, each = length(idx))
+      Gw <- G * w[ord[idx]]
+      Gw[1L, ] <- Gw[1L, ] + carry
+      S1 <- matrix(apply(Gw, 2L, cumsum), nrow = length(idx))
       carry <- S1[length(idx), ]
       b_idx <- which(blk_end >= start & blk_end <= max(idx))
       if (length(b_idx) == 0L) next
