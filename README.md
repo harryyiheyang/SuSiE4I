@@ -154,8 +154,8 @@ the purified set) and is listed in `interaction_discoveries` with
 enter the refit are not listed. `coverage_nonkilled` defaults to the smaller of
 the interaction CS coverage and 0.8. This helps sparse level-by-level cells,
 which often stay below the coverage needed for a credible set.
-Main effects still require a credible set. With `groupint_ind`, `L_int`
-defaults to 10.
+Main effects still require a credible set. With `groupint_ind`, each `L_int`
+component selects a whole group, so the default `L_int = 5` applies.
 
 ## Refit Summaries
 

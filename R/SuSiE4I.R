@@ -21,8 +21,8 @@
 #' @param scale_data Whether to standardize `X` and `Z`.
 #' @param n_threads Number of threads used for cross-products.
 #' @param L_main Number of main-effect SuSiE components.
-#' @param L_int Number of interaction SuSiE components. When `groupint_ind` is
-#'   given and `L_int` is not supplied, 10 is used.
+#' @param L_int Number of interaction SuSiE components. With `groupint_ind`
+#'   each component selects a whole group.
 #' @param select_env Whether to fine-map columns of `Z`. Supported for all
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
@@ -166,7 +166,6 @@ colnames(Z)[bad_z] <- sub("^Main_", "MaIn_", colnames(Z)[bad_z])
 }
 }
 
-if (!is.null(groupint_ind) && missing(L_int)) L_int <- 10
 
 is_binary_response <- function(v) {
 vv <- unique(stats::na.omit(v))

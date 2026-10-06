@@ -62,8 +62,8 @@ formal fit; intermediate joint refits use the exact ridge solver.}
 
 \item{L_main}{Number of main-effect SuSiE components.}
 
-\item{L_int}{Number of interaction SuSiE components. When `groupint_ind` is
-given and `L_int` is not supplied, 10 is used.}
+\item{L_int}{Number of interaction SuSiE components. With `groupint_ind`
+each component selects a whole group.}
 
 \item{select_env}{Whether to fine-map columns of `Z`. Supported for all
 outcome paths.}
