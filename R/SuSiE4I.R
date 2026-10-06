@@ -29,14 +29,20 @@
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
 #' @param groupint_ind Optional list of at least two groups of `Z` columns,
 #'   given as column indices or names (for example the indicator columns of
-#'   each haplotype; a group may hold a single column). For every pair of
-#'   groups, each column of one group times each column of the other is added
-#'   to the interaction design as its own candidate; columns within a group are
-#'   never paired, and a product with `crossprod(x) / n < 1e-8` is skipped.
-#'   A column may belong to only one group. `Z` by main-effect interactions
-#'   still follow `noint_env`. `interaction_discoveries` gains `Group1`,
-#'   `Term1`, `Group2`, `Term2` and `Pair`, naming the specific columns
-#'   (levels) on each side. Not supported with `select_env = TRUE`.
+#'   each haplotype or other factor; a group may hold a single column). For
+#'   every pair of groups, each column of one group times each column of the
+#'   other is an interaction column; columns within a group are never paired,
+#'   and a product with `crossprod(x) / n < 1e-8` is skipped. A column may
+#'   belong to only one group. `Z` by main-effect interactions still follow
+#'   `noint_env`. The columns that pair the same two sides (a group with a
+#'   main-effect CS, or two groups) form one group single effect with prior
+#'   `N(0, V I / d)`; its joint Bayes factor competes with the other candidates
+#'   and its levels do not compete with each other. `interaction_discoveries`
+#'   lists every level of a selected group with the group's `PIP` and the
+#'   per-level `lfsr`, which identifies the interacting levels, and gains
+#'   `Group1`, `Term1`, `Group2`, `Term2` and `Pair`. The refit uses one column
+#'   per group (its posterior direction), so `Pvalue` tests the whole group.
+#'   Not supported with `select_env = TRUE`.
 #' @param coverage_nonkilled Coverage for interaction-stage components that
 #'   do not form a credible set. A component SuSiE did not kill (prior
 #'   variance above zero) takes its coverage set at this level, purified by

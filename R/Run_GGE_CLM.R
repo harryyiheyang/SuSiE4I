@@ -149,6 +149,7 @@ Run_GGE_CLM <- function(X, Z, y, clm_link,
           n = n, L = Lint
         ),
         susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
+        groups = groupint_column_groups(colnames(W), colnames(Z), groupint_ind),
         iter = iter, min.iter = min.iter
       )
 

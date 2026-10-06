@@ -122,6 +122,7 @@ ssW <- cox_suffstat_block(W, eta, cbind(Z, XCS_refit), y, status,
 fitW <- .fit_susie_stage(
 structural = list(XtX = ssW$XtX, Xty = ssW$Xty, yty = n - 1, n = n, L = Lint),
 susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
+groups = groupint_column_groups(colnames(W), colnames(Z), groupint_ind),
 iter = iter, min.iter = min.iter
 )
 

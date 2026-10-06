@@ -119,14 +119,23 @@ columns, with `groupint_ind` listing which columns form each group, for
 example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"), HapB = "HB_b1")`
 (indices or names; at least two groups; a group may hold one column; no
 column in two groups). For every pair of groups, each column of one group
-times each column of the other becomes its own interaction candidate, and
-columns within a group are never paired. Products with `crossprod(x) / n`
-below `1e-8` are skipped. Interactions of `Z` with the main-effect credible
-sets are unchanged and follow `noint_env`. Selection in the interaction stage
-is unchanged (`susieR::susie_ss`), and `interaction_discoveries` names the
-group and column on each side of a selected interaction (`Group1`, `Term1`,
-`Group2`, `Term2`, `Pair`), so the specific interacting haplotype levels can
-be read off directly. See `example/example_group_int.R`.
+times each column of the other is an interaction column, and columns within a
+group are never paired. Products with `crossprod(x) / n` below `1e-8` are
+skipped. Interactions of `Z` with the main-effect credible sets follow
+`noint_env`.
+
+All columns that pair the same two sides (one group with a main-effect credible
+set, or two groups with each other) form ONE candidate in the interaction
+SuSiE: a group single effect with prior `N(0, V I / d)` on its `d` columns, so
+`V` is the total effect variance of the group. Its joint Bayes factor competes
+with the other candidates; the levels inside a group do not compete. The
+interacting levels are identified by the per-level `lfsr` (local false sign
+rate) in `interaction_discoveries`, which lists every level of a selected group
+with the group's `PIP` and names both sides (`Group1`, `Term1`, `Group2`,
+`Term2`, `Pair`). A group enters the refit as one column (its posterior
+direction), so `Pvalue` tests the whole group effect. When every group is a
+single column the interaction stage is `susieR::susie_ss` as before. See
+`example/example_group_int.R`.
 
 Interaction components that SuSiE did not kill (prior variance above zero)
 but that did not form a credible set can still enter the refit. Each one takes

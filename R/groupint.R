@@ -3,8 +3,9 @@
 #
 # groupint_ind lists groups of Z columns. For every pair of different groups,
 # each column of one group times each column of the other is added to the
-# interaction design as its own candidate; columns within a group are never
-# paired. Z x main-CS interactions are unchanged and still follow noint_env.
+# interaction design; columns within a group are never paired. Z x main-CS
+# interactions still follow noint_env. The interaction stage then treats the
+# columns that pair the same two sides as one group (gsusie_ss).
 ###############################################################################
 
 normalize_groupint_ind <- function(groupint_ind, Z) {
@@ -74,4 +75,17 @@ IntIndex$Group2 <- g2
 IntIndex$Term2 <- t2
 IntIndex$Pair <- paste(label(g1, t1), label(g2, t2), sep = " x ")
 IntIndex
+}
+
+# Group id of each interaction column for the group single-effect fit. Columns
+# that pair the same two sides (a groupint_ind group or an ungrouped column on
+# each side, e.g. Main_CS1 x HapA) form one group; everything else is a
+# singleton.
+groupint_column_groups <- function(namW, z_names, groupint_ind) {
+if (is.null(groupint_ind) || is.null(namW)) return(NULL)
+key <- vapply(strsplit(namW, "*", fixed = TRUE), function(x) {
+g <- groupint_ind[match(x, z_names)]
+paste(ifelse(is.na(g), x, g), collapse = "*")
+}, character(1))
+match(key, unique(key))
 }

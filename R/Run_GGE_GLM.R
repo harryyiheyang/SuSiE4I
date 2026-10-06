@@ -117,7 +117,8 @@ Run_GGE_GLM <- function(X, Z, y, family = binomial(link = "logit"), mgcv_model =
             Wty <- ssW$Xty
             yty4W <- ssW$yty
             fitW <- .fit_susie_stage(structural = list(XtX = WtW, Xty = Wty, yty = yty4W, n = max(0.95 * n, work$n_eff), L = Lint),
-                susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled, iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
+                susie_para = susie_para_int, stage = "int", nonkilled_coverage = coverage_nonkilled,
+                groups = groupint_column_groups(colnames(W), colnames(Z), groupint_ind), iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
             CSdt_w <- summary(fitW)$vars
             cs_indices_w <- sort(unique(CSdt_w$cs[CSdt_w$cs > 0]))
             w_component <- build_component_design_from_fit(W, fitW, "Int_CS")

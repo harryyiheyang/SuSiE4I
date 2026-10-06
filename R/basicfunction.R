@@ -138,6 +138,9 @@ data.frame(Index = a, Variable = unname(nam[a]), CS = paste0(prefix, i),
 })
 out <- do.call(rbind, S)
 rownames(out) <- NULL
+if (!is.null(fit$lfsr)) {
+out$lfsr <- fit$lfsr[cbind(as.integer(sub(prefix, "", out$CS, fixed = TRUE)), out$Index)]
+}
 if (!is.null(fit$suggested)) {
 comp <- as.integer(sub(prefix, "", out$CS, fixed = TRUE))
 sug <- match(comp, fit$suggested$index)
@@ -724,9 +727,13 @@ for (k in seq_along(cs_indices)) {
 i <- cs_indices[k]
 vars_in_cs_i <- cs$vars[[k]]
 vars_in_cs_i <- vars_in_cs_i[vars_in_cs_i >= 1L & vars_in_cs_i <= ncol(X)]
-if (length(vars_in_cs_i) > 0) Alpha_filtered[i, vars_in_cs_i] <- fit$alpha[i, vars_in_cs_i] / sum(fit$alpha[i, vars_in_cs_i])
+# a group fit repeats a group's alpha on each of its columns: count it once
+a_i <- fit$alpha[i, vars_in_cs_i]
+if (!is.null(fit$group)) a_i <- a_i[!duplicated(fit$group[vars_in_cs_i])]
+if (length(vars_in_cs_i) > 0) Alpha_filtered[i, vars_in_cs_i] <- fit$alpha[i, vars_in_cs_i] / sum(a_i)
 }
-Alpha_filtered <- Alpha_filtered * sign(fit$mu)
+# group fits use the unit posterior direction of each group, not its sign
+Alpha_filtered <- Alpha_filtered * if (is.null(fit$group)) sign(fit$mu) else fit$unit_mu
 XCS <- matrixMultiply(X, t(as.matrix(Alpha_filtered)))
 XCS <- XCS[, cs_indices, drop = FALSE]
 if (is.null(dim(XCS))) XCS <- matrix(XCS, ncol = 1)
@@ -988,13 +995,21 @@ args
 .fit_susie_stage <- function(structural, susie_para, stage,
                              iter, min.iter, gaussian = FALSE,
                              residual_variance = NULL,
-                             nonkilled_coverage = NULL) {
+                             nonkilled_coverage = NULL, groups = NULL) {
 args <- .susie_iteration_args(
 susie_para = susie_para, structural = structural, stage = stage,
 iter = iter, min.iter = min.iter, gaussian = gaussian,
 residual_variance = residual_variance
 )
-fit <- do.call(susieR::susie_ss, args)
+if (identical(stage, "int") && is.null(nonkilled_coverage)) {
+nonkilled_coverage <- min(args$coverage, 0.8)
+}
+# groupint_ind with a multi-column group: one group single effect per group.
+fit <- if (!is.null(groups) && anyDuplicated(groups)) {
+do.call(gsusie_ss, c(args, list(group = groups, suggested_coverage = nonkilled_coverage)))
+} else {
+do.call(susieR::susie_ss, args)
+}
 # susie_ss fits carry no intercept and every caller drops it; record 0 so
 # coef.susie() (susieR >= 0.16) does not print a hint on each call.
 if (is.null(fit$intercept) || isTRUE(is.na(fit$intercept))) fit$intercept <- 0
@@ -1009,8 +1024,7 @@ stop("The fitted SuSiE requested coverage does not match its effective CS config
 }
 # Interaction stages also refit non-killed non-CS components that reach
 # nonkilled_coverage (default: the smaller of the CS coverage and 0.8).
-if (identical(stage, "int")) {
-if (is.null(nonkilled_coverage)) nonkilled_coverage <- min(fit$cs_config$coverage, 0.8)
+if (identical(stage, "int") && is.null(fit$suggested)) {
 fit$suggested <- find_suggested_components(
 fit, structural$XtX,
 min_abs_corr = fit$cs_config$min_abs_corr,
