@@ -16,7 +16,7 @@ SuSiE4I_GAM(
   L_main = 10,
   L_int = 5,
   noint_vars = NULL,
-  coverage_nonkilled = 0.8,
+  coverage_nonkilled = NULL,
   include_x_squared = FALSE,
   susie_para_main = NULL,
   susie_para_int = NULL,
@@ -50,22 +50,21 @@ SuSiE4I_GAM(
 
 \item{L_main}{Number of main-effect SuSiE components.}
 
-\item{L_int}{Number of interaction SuSiE components. When `groupint_ind` is
-given and `L_int` is not supplied, 10 is used.}
+\item{L_int}{Number of interaction SuSiE components. With `groupint_ind`
+each component selects a whole group.}
 
 \item{noint_vars}{Names of formula variables that do not interact with `X`.}
 
 \item{coverage_nonkilled}{Coverage for interaction-stage components that
-do not form a credible set, kept separate from the credible-set
-`coverage` in `susie_para_int`. Every such component that SuSiE did not
-kill (prior variance above zero) is reported in `interaction_discoveries`
-with `InCS = FALSE`, with no PIP threshold. Its variables are its
-coverage set at this level, purified by dropping members with absolute
-correlation below `min_abs_corr` to the lead; `Coverage` gives the CS
-coverage or the purified coverage. With `groupint_ind` these components
-also enter the refit, built from the purified set; without it they are
-reported only (`Pvalue` is `NA`) and the refit is unchanged. Main effects
-always require a credible set.}
+do not form a credible set. A component SuSiE did not kill (prior
+variance above zero) takes its coverage set at this level, purified by
+dropping members with absolute correlation below `min_abs_corr` to the
+lead; if the purified set still reaches this coverage, the component
+enters the refit and is reported in `interaction_discoveries` with
+`InCS = FALSE`. Other non-CS components are neither refit nor reported.
+`NULL` (default) uses the smaller of the interaction CS coverage
+(`susie_para_int$coverage`) and 0.8. Main effects always require a
+credible set.}
 
 \item{include_x_squared}{Whether to include squared main-effect summaries in
 the interaction design.}
@@ -121,26 +120,29 @@ sets as well (the main stage `[B, Int_CS]`, the interaction stage
 are used. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 }
 \details{
-Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
-written (with a warning); it is built once and reused. The exceptions are
-`bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
-level of a factor, first-difference penalty in level order). The centered
-contrasts of such a factor times a main-effect credible set form one group
-single effect (prior \eqn{V I/d}{V*I/d}, an `lfsr` per level); in the refit
-its credible set enters by level, as that block with the fixed penalty
-\eqn{\phi I/(cV)}{phi*I/(c*V)}, and gets the Wald P value of the block. A factor `by` becomes
-a common smooth plus one varying-coefficient smooth per centered contrast; a
-numeric `by` gives a varying coefficient whose constant column is dropped.
-`te()`, `ti()` and `t2()` are not supported. All covariates (factor
-contrasts included) and `X` are centered.
+By default `s()` uses the truncated linear basis (`bs = "truncated"`,
+Ruppert, Wand and Carroll): 1, z and \eqn{(z-\tau_j)_+}{(z - tau_j)_+} at the
+\eqn{j/k}{j/k} quantiles, \eqn{j = 1, \dots, k-1}{j = 1, ..., k - 1}, with
+(1, z) unpenalized and the truncated lines iid, i.e. binned regression with
+continuity. `bs = "AMatern"` gives the adaptive Matern basis of mgcv.taps
+(null space (1, z), built once and reused); other `bs` choices become
+`"truncated"` (with a warning). `bs = "re"` (mgcv's iid random effect) and
+`bs = "rw1"` (one coefficient per level of a factor, first-difference penalty
+in level order) are kept. A factor `by` becomes a common smooth plus one
+varying-coefficient smooth per centered contrast; a numeric `by` gives a
+varying coefficient whose constant column is dropped. `te()`, `ti()` and
+`t2()` are not supported. All covariates (factor contrasts included) and `X`
+are centered.
 
 Interactions follow strong heredity: they are built from main-effect
-credible sets only, with every covariate `z` (`Main_CS * z`) and, for
-covariates with a smooth, with its fitted null contribution
-(`Main_CS * f(z)`, all smooths in `z` including `by` terms). Interaction
-candidates are standardized. In the joint refit an interaction credible set
-on a smooth `z` enters as the linear `Main_CS * z` (ridge \eqn{1/V}{1/V}
-from SuSiE) plus `Main_CS * M(z)`, the Matern part of the main-effect basis
-(null space removed), with the fixed penalty \eqn{\phi\Omega/(cV)}{phi*Omega/(c*V)}
-where `c` scales the block to one unit-variance column.
+credible sets only. A linear covariate `z` gives the single standardized
+candidate `Main_CS * z`. A group is one single effect (prior
+\eqn{V I/d}{V*I/d}, an `lfsr` per column): the centered contrasts of a
+`bs = "re"` / `"rw1"` factor times `Main_CS`, and, for a smoothed `z`
+(whichever main-effect basis), `Main_CS * M(z)`, where `M(z)` is the adaptive
+Matern basis with the intercept as its only null space, whitened by its
+penalty \eqn{\Omega}{Omega} so that the prior is \eqn{Vc\Omega^{-1}}{V*c*Omega^-1}.
+In the joint refit a group credible set enters by level as that block with
+the fixed penalty \eqn{\phi I/(cV)}{phi*I/(c*V)} (`c` scales the block to one
+unit-variance column) and gets the Wald P value of the block.
 }

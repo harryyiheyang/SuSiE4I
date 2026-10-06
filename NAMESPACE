@@ -2,8 +2,10 @@
 
 S3method(Predict.matrix,rw1.smooth)
 S3method(Predict.matrix,s4iAM.smooth)
+S3method(Predict.matrix,truncated.smooth)
 S3method(smooth.construct,rw1.smooth.spec)
 S3method(smooth.construct,s4iAM.smooth.spec)
+S3method(smooth.construct,truncated.smooth.spec)
 export(SuSiE4I)
 export(SuSiE4I_GAM)
 export(blockwise_crossprod)

@@ -10,28 +10,31 @@
 #' `[B, Main_CS]`, credible-set columns with ridge \eqn{1/V}{1/V}); no offsets
 #' are used. Otherwise the algorithm is that of the GLM path of [SuSiE4I()].
 #'
-#' Every `s()` uses the adaptive Matern basis of mgcv.taps whatever `bs` was
-#' written (with a warning); it is built once and reused. The exceptions are
-#' `bs = "re"` (mgcv's iid random effect) and `bs = "rw1"` (one coefficient per
-#' level of a factor, first-difference penalty in level order). The centered
-#' contrasts of such a factor times a main-effect credible set form one group
-#' single effect (prior \eqn{V I/d}{V*I/d}, an `lfsr` per level); in the refit
-#' its credible set enters by level, as that block with the fixed penalty
-#' \eqn{\phi I/(cV)}{phi*I/(c*V)}, and gets the Wald P value of the block. A factor `by` becomes
-#' a common smooth plus one varying-coefficient smooth per centered contrast; a
-#' numeric `by` gives a varying coefficient whose constant column is dropped.
-#' `te()`, `ti()` and `t2()` are not supported. All covariates (factor
-#' contrasts included) and `X` are centered.
+#' By default `s()` uses the truncated linear basis (`bs = "truncated"`,
+#' Ruppert, Wand and Carroll): 1, z and \eqn{(z-\tau_j)_+}{(z - tau_j)_+} at the
+#' \eqn{j/k}{j/k} quantiles, \eqn{j = 1, \dots, k-1}{j = 1, ..., k - 1}, with
+#' (1, z) unpenalized and the truncated lines iid, i.e. binned regression with
+#' continuity. `bs = "AMatern"` gives the adaptive Matern basis of mgcv.taps
+#' (null space (1, z), built once and reused); other `bs` choices become
+#' `"truncated"` (with a warning). `bs = "re"` (mgcv's iid random effect) and
+#' `bs = "rw1"` (one coefficient per level of a factor, first-difference penalty
+#' in level order) are kept. A factor `by` becomes a common smooth plus one
+#' varying-coefficient smooth per centered contrast; a numeric `by` gives a
+#' varying coefficient whose constant column is dropped. `te()`, `ti()` and
+#' `t2()` are not supported. All covariates (factor contrasts included) and `X`
+#' are centered.
 #'
 #' Interactions follow strong heredity: they are built from main-effect
-#' credible sets only, with every covariate `z` (`Main_CS * z`) and, for
-#' covariates with a smooth, with its fitted null contribution
-#' (`Main_CS * f(z)`, all smooths in `z` including `by` terms). Interaction
-#' candidates are standardized. In the joint refit an interaction credible set
-#' on a smooth `z` enters as the linear `Main_CS * z` (ridge \eqn{1/V}{1/V}
-#' from SuSiE) plus `Main_CS * M(z)`, the Matern part of the main-effect basis
-#' (null space removed), with the fixed penalty \eqn{\phi\Omega/(cV)}{phi*Omega/(c*V)}
-#' where `c` scales the block to one unit-variance column.
+#' credible sets only. A linear covariate `z` gives the single standardized
+#' candidate `Main_CS * z`. A group is one single effect (prior
+#' \eqn{V I/d}{V*I/d}, an `lfsr` per column): the centered contrasts of a
+#' `bs = "re"` / `"rw1"` factor times `Main_CS`, and, for a smoothed `z`
+#' (whichever main-effect basis), `Main_CS * M(z)`, where `M(z)` is the adaptive
+#' Matern basis with the intercept as its only null space, whitened by its
+#' penalty \eqn{\Omega}{Omega} so that the prior is \eqn{Vc\Omega^{-1}}{V*c*Omega^-1}.
+#' In the joint refit a group credible set enters by level as that block with
+#' the fixed penalty \eqn{\phi I/(cV)}{phi*I/(c*V)} (`c` scales the block to one
+#' unit-variance column) and gets the Wald P value of the block.
 #'
 #' @param formula Null-model formula with univariate `s()` terms.
 #' @param data Data frame with the response and the null-model covariates.
@@ -64,9 +67,9 @@ Run_GAM(X = X, null = null, family = family, mgcv_model = mgcv_model, Lmain = L_
         returnModel = returnModel)
 }
 
-# Rewrite the null formula (every s() to the frozen AMatern basis), center the
-# covariates, fit the null model once, and build the interaction covariates
-# (centered z, and f(z) for smoothed z).
+# Rewrite the null formula (s() to the truncated linear basis, or to the frozen
+# AMatern basis when asked), center the covariates, fit the null model once, and
+# build the interaction covariates (centered z; M(z) for a smoothed z).
 gam_null_setup <- function(formula, data, family, mgcv_model, k, noint_vars) {
 ig <- mgcv::interpret.gam(formula)
 specs <- ig$smooth.spec
@@ -74,8 +77,9 @@ if (any(vapply(specs, inherits, TRUE, what = c("tensor.smooth.spec", "t2.smooth.
 stop("te(), ti() and t2() are not supported; use univariate s() terms.")
 }
 keep <- vapply(specs, inherits, TRUE, what = c("re.smooth.spec", "rw1.smooth.spec"))
-if (!all(keep | vapply(specs, inherits, TRUE, what = "AMatern.smooth.spec"))) {
-warning("All smooths except bs = \"re\" and \"rw1\" use the adaptive Matern (AMatern) basis; other bs choices were replaced.", call. = FALSE)
+am <- vapply(specs, inherits, TRUE, what = "AMatern.smooth.spec")
+if (!all(keep | am | vapply(specs, inherits, TRUE, what = "truncated.smooth.spec"))) {
+warning("Smooths other than bs = \"truncated\", \"AMatern\", \"re\" and \"rw1\" use the truncated linear basis.", call. = FALSE)
 }
 par_vars <- attr(stats::terms(ig$pf), "term.labels")
 smooth_vars <- unique(vapply(specs, function(sp) sp$term, ""))
@@ -102,18 +106,22 @@ cols[[v]] <- colnames(D)
 
 env <- new.env(parent = environment(formula))
 env$.s4i_bases <- list()
-sterm <- function(z, by, kz) {
+sterm <- function(z, by, kz, am) {
+if (!am) return(sprintf("s(%s%s, bs = \"truncated\", k = %d)", z, if (is.null(by)) "" else paste0(", by = ", by), kz))
 if (is.null(env$.s4i_bases[[z]])) env$.s4i_bases[[z]] <- gam_amatern_base(new[[z]], k = kz)
 sprintf("s(%s%s, bs = \"s4iAM\", xt = list(base = .s4i_bases[[\"%s\"]]))", z,
         if (is.null(by)) "" else paste0(", by = ", by), z)
 }
 rhs <- unlist(cols[par_vars], use.names = FALSE)
 for (sp in specs[keep]) rhs <- c(rhs, sprintf("s(%s, bs = \"%s\")", sp$term, if (inherits(sp, "re.smooth.spec")) "re" else "rw1"))
-for (sp in specs[!keep]) {
+kzs <- list()
+for (i in which(!keep)) {
+sp <- specs[[i]]
 kz <- if (sp$bs.dim > 0) sp$bs.dim else k
-if (identical(sp$by, "NA") || !is.numeric(data[[sp$by]])) rhs <- c(rhs, sterm(sp$term, NULL, kz))
+kzs[[sp$term]] <- kz
+if (identical(sp$by, "NA") || !is.numeric(data[[sp$by]])) rhs <- c(rhs, sterm(sp$term, NULL, kz, am[i]))
 if (!identical(sp$by, "NA")) {
-rhs <- c(rhs, cols[[sp$by]], vapply(cols[[sp$by]], function(b) sterm(sp$term, b, kz), ""))
+rhs <- c(rhs, cols[[sp$by]], vapply(cols[[sp$by]], function(b) sterm(sp$term, b, kz, am[i]), ""))
 }
 }
 fml <- stats::as.formula(paste(ig$response, "~", paste(unique(rhs), collapse = " + ")), env = env)
@@ -123,19 +131,25 @@ mgcv::bam(fml, data = new, family = family, method = "fREML", discrete = TRUE)
 } else mgcv::gam(fml, data = new, family = family, method = "REML")
 
 int_vars <- setdiff(all_vars, noint_vars)
-Zint <- as.matrix(new[, unlist(cols[int_vars], use.names = FALSE), drop = FALSE])
-tt <- stats::predict(fit, type = "terms")
-for (z in intersect(vapply(specs[!keep], function(sp) sp$term, ""), int_vars)) {
-lab <- vapply(fit$smooth, function(sm) if (sm$term == z) sm$label else NA_character_, "")
-fz <- rowSums(tt[, stats::na.omit(lab), drop = FALSE])
-Zint <- cbind(Zint, fz - mean(fz))
-colnames(Zint)[ncol(Zint)] <- paste0("f(", z, ")")
-}
+zs <- intersect(names(kzs), int_vars)
+Zint <- scale(as.matrix(new[, unlist(cols[setdiff(int_vars, zs)], use.names = FALSE), drop = FALSE]))
 # The contrasts of a bs = "re" / "rw1" factor interact as one group single effect.
 zgroup <- rep(NA_character_, ncol(Zint))
 for (v in intersect(vapply(specs[keep], function(sp) sp$term, ""), int_vars)) zgroup[colnames(Zint) %in% cols[[v]]] <- v
+# A smoothed z interacts only through M(z): the AMatern part with the intercept as
+# null space, whitened by its penalty Omega so that the group prior V I/d is
+# V c Omega^-1 (c = n d / tr(M'M) puts it on the scale of d unit-variance columns).
+for (z in zs) {
+b1 <- gam_amatern_base(new[[z]], k = kzs[[z]], m = 1L)
+e <- eigen(b1$S[-1L, -1L], symmetric = TRUE)
+M <- scale(gam_amatern_predict(b1, new[[z]])[, -1L] %*% e$vectors %*% diag(1 / sqrt(e$values)), scale = FALSE)
+M <- M / sqrt(mean(M^2))
+colnames(M) <- paste0("M(", z, ")", seq_len(ncol(M)))
+Zint <- cbind(Zint, M)
+zgroup <- c(zgroup, rep(z, ncol(M)))
+}
 list(fit = fit, formula = fml, data = new, response = ig$response,
-     B = stats::predict(fit, type = "lpmatrix"), Zint = scale(Zint), zgroup = zgroup)
+     B = stats::predict(fit, type = "lpmatrix"), Zint = Zint, zgroup = zgroup)
 }
 
 # S_lambda in the null-model coefficient layout, smoothing parameters taken

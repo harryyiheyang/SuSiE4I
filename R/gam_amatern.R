@@ -21,7 +21,9 @@ gam_amatern_nk <- function(x) {
 min(300L, as.integer(floor(0.3 * length(unique(x)))))
 }
 
-gam_amatern_base <- function(x, k = 10L, grid_size = 5000L) {
+# m = 2: null space (1, z), the main effect bs = "AMatern". m = 1: null space is the
+# intercept only, the interaction group Main_CS x M(z).
+gam_amatern_base <- function(x, k = 10L, grid_size = 5000L, m = 2L) {
 x <- as.numeric(x)
 ux <- sort(unique(x))
 nk <- gam_amatern_nk(x)
@@ -34,8 +36,7 @@ grid <- if (length(ux) <= grid_size) ux else
   stats::quantile(x, seq(0, 1, length.out = grid_size), names = FALSE)
 kappa <- gam_kappa_quantile(x, nk)
 lambda <- 10 * stats::sd(x)
-m <- 2L
-A <- cbind(1, grid)
+A <- cbind(1, grid)[, seq_len(m), drop = FALSE]
 mb <- gam_matern_basis(grid, kappa, lambda)
 C <- cbind(A, mb$DX)
 G <- crossprod(C, A) / nrow(C)
@@ -53,7 +54,7 @@ list(kappa = kappa, lambda = lambda, Qv = Qv, S = S, m = m)
 
 gam_amatern_predict <- function(base, x) {
 x <- as.numeric(x)
-A <- cbind(1, x)
+A <- cbind(1, x)[, seq_len(base$m), drop = FALSE]
 cbind(A, cbind(A, gam_matern_basis(x, base$kappa, base$lambda)$DX) %*% base$Qv)
 }
 
@@ -111,4 +112,37 @@ object
 #' @export
 Predict.matrix.rw1.smooth <- function(object, data) {
 stats::model.matrix(~ f - 1, data.frame(f = factor(data[[object$term]], levels = object$levels)))
+}
+
+# bs = "truncated" (Ruppert, Wand and Carroll): 1, x, (x - tau_j)_+ with tau_j the
+# j/k quantiles, j = 1, ..., k - 1; (1, x) unpenalized, the truncated lines iid.
+#' @export
+smooth.construct.truncated.smooth.spec <- function(object, data, knots) {
+x <- as.numeric(data[[object$term]])
+k <- if (object$bs.dim > 0) object$bs.dim else 10L
+object$tau <- unique(stats::quantile(x, seq_len(k - 1L) / k, names = FALSE))
+X <- cbind(1, x, pmax(outer(x, object$tau, "-"), 0))
+S <- diag(c(0, 0, rep(1, length(object$tau))))
+# a numeric by multiplies the whole basis: drop its constant column, as for s4iAM
+object$drop_const <- !identical(object$by, "NA")
+if (object$drop_const) {
+X <- X[, -1L, drop = FALSE]
+S <- S[-1L, -1L, drop = FALSE]
+object$C <- matrix(0, 0L, ncol(X))
+}
+object$X <- X
+object$S <- list(S)
+object$null.space.dim <- 2L - object$drop_const
+object$rank <- length(object$tau)
+object$df <- ncol(X)
+object$bs.dim <- ncol(X)
+class(object) <- c("truncated.smooth", "mgcv.smooth")
+object
+}
+
+#' @export
+Predict.matrix.truncated.smooth <- function(object, data) {
+x <- as.numeric(data[[object$term]])
+X <- cbind(1, x, pmax(outer(x, object$tau, "-"), 0))
+if (isTRUE(object$drop_const)) X[, -1L, drop = FALSE] else X
 }

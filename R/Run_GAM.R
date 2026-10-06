@@ -35,7 +35,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         pseudo_response <- work$pseudo_response
         W_diag <- work$weights
         S_null <- gam_null_penalty(null$fit, fit_final) / work$phi0
-        # the Matern blocks of the last refit (G_pen) are projected with their fixed precision Omega / (c V)
+        # the group blocks of the last refit (G_pen) are projected with their fixed precision I / (c V)
         pW <- projection_penalty_precision(WCS_refit, fitX, fitW)
         ZI_main <- cbind(B, WCS_refit, do.call(cbind, lapply(G_pen, `[[`, "X")))
         P_main <- as.matrix(Matrix::bdiag(c(list(S_null, diag(pW, length(pW))), lapply(G_pen, `[[`, "P"))))
@@ -115,17 +115,12 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                   }
                 }
             }
-            # An Int CS whose z (z or f(z)) is smooth in the null model is refitted as the linear
-            # Xi*z (column Int_CSk, ridge 1/V) plus the Matern part Xi*M(z) of the main-effect basis
-            # with the fixed penalty Omega / (c V); V is SuSiE's and c = n / tr(Omega^-1 G'G) puts the
-            # block on the scale of one unit-variance column.
+            # An Int CS on a group (a bs = "re" / "rw1" factor, or M(z) of a smoothed z) is refitted
+            # by level (by): the group's columns times Xi as one block with the fixed penalty
+            # I / (c V) in the group's (whitened) scale, in place of Int_CSk.
             csw <- susie_cs_list(fitW)
-            bases <- environment(null$formula)$.s4i_bases
-            zw <- sub("^f\\((.*)\\)$", "\\1", sub("\\*Main_CS[0-9]+$", "", colnames(W)))
-            # An Int CS on a bs = "re" / "rw1" factor group is refitted by level (by): the group's
-            # contrasts times Xi as one block with the iid fixed penalty I / (c V), in place of Int_CSk.
+            zw <- sub("\\*Main_CS[0-9]+$", "", colnames(W))
             for (k in seq_along(csw$index)) {
-                v <- csw$vars[[k]][zw[csw$vars[[k]]] %in% names(bases)]
                 fg <- csw$vars[[k]][!is.na(null$zgroup[match(zw[csw$vars[[k]]], colnames(Z))])]
                 if (length(fg)) {
                     fg <- fg[which.max(fitW$alpha[csw$index[k], fg])]
@@ -134,16 +129,6 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
                     Gk <- xk * Z[, which(null$zgroup == null$zgroup[match(zw[fg], colnames(Z))]), drop = FALSE]
                     G_pen[[paste0("G_", cs)]] <- list(X = Gk, P = diag(sum(Gk^2) / (n * refit_penalty_variance(fitX, fitW, cs)), ncol(Gk)))
                     WCS_refit <- WCS_refit[, colnames(WCS_refit) != cs, drop = FALSE]
-                } else if (length(v)) {
-                    v <- v[which.max(fitW$alpha[csw$index[k], v])]
-                    cs <- paste0("Int_CS", csw$index[k])
-                    xk <- XCS[, sub("^.*\\*", "", colnames(W)[v])]
-                    WCS_refit[, cs] <- xk * Z[, zw[v]]
-                    base <- bases[[zw[v]]]
-                    Gk <- xk * gam_amatern_predict(base, null$data[[zw[v]]])[, -(1:2), drop = FALSE]
-                    Om <- base$S[-(1:2), -(1:2)]
-                    Vcs <- refit_penalty_variance(fitX, fitW, cs)
-                    G_pen[[paste0("G_", cs)]] <- list(X = Gk, P = Om * sum(solve(Om) * crossprod(Gk)) / (n * Vcs))
                 }
             }
         }
