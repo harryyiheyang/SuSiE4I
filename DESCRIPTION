@@ -17,7 +17,7 @@ Imports:
     glmnet,
     survival,
     susieR,
-    CppMatrix,
+    CppMatrix (>= 0.2.0),
     Matrix,
     stats,
     mgcv,

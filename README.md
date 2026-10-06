@@ -146,6 +146,17 @@ groups, and purity between two groups is their first canonical correlation.
 Main effects still require a credible set. With `groupint_ind`, each `L_int`
 component selects a whole group, so the default `L_int = 5` applies.
 
+## Genotypes from PLINK files
+
+`X` may also be a list of arguments to `CppMatrix::geno_open()`, for example
+`X = list(bedfile = "chr1", snp_vec = snps, sample_vec = iids, impute = "mean")`
+(or `pgenfile = "chr1"` for PLINK 2). `snp_vec` and `sample_vec` select
+variants and samples by ID or file index, and `impute` is `"median"` (default)
+or `"mean"` for missing calls. The genotypes are kept in compact 2-bit form and
+every cross-product is computed from them, so `X` is never held as a dense
+`n` by `p` matrix in R; results match a dense `X` standardized with
+`scale_data = TRUE`.
+
 ## Refit Summaries
 
 Selected credible-set summaries are refit jointly in the outcome model. Optional

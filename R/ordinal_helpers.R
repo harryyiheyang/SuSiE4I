@@ -232,7 +232,7 @@ ocat_suffstat_block <- function(Xblk, y_int, eta, Znui, alpha,
                                 clm_link = "logit",
                                 n_threads = 1, ridge = 1e-6,
                                 block_size = 10000L) {
-  Xblk <- as.matrix(Xblk)
+  if (!inherits(Xblk, "geno")) Xblk <- as.matrix(Xblk)
   n <- nrow(Xblk)
   p <- ncol(Xblk)
   if (is.null(Znui)) {

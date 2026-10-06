@@ -15,7 +15,7 @@ cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
   if (missing(nuisance_precision)) {
     stop("nuisance_precision must be supplied explicitly for every projection.")
   }
-  Xblk <- as.matrix(Xblk)
+  if (!inherits(Xblk, "geno")) Xblk <- as.matrix(Xblk)
   n <- nrow(Xblk)
   p <- ncol(Xblk)
 
@@ -33,10 +33,12 @@ cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
   k <- ncol(N)
   status <- as.integer(surv_status)
 
-  rsX <- cox_riskset(X = Xblk, eta = eta, time = surv_time,
-                     status = status, n_threads = n_threads)
   rsN <- cox_riskset(X = N, eta = eta, time = surv_time,
                      status = status, n_threads = 1L)
+  rsX <- if (inherits(Xblk, "geno")) rsN else {
+    cox_riskset(X = Xblk, eta = eta, time = surv_time,
+                status = status, n_threads = n_threads)
+  }
   a <- as.numeric(rsX$a)
   M <- as.numeric(rsX$M)
   dev <- as.numeric(rsX$dev)
@@ -45,8 +47,36 @@ cox_suffstat_block <- function(Xblk, eta, Znui, surv_time, surv_status,
   # [X N]' diag(a) [X N] - B' diag(dev) B, split into X and N blocks.
   AX <- weighted_crossprod(Xblk, a, cbind(N * a, M),
                            n_threads = n_threads, block_size = block_size)
-  BX <- weighted_crossprod(rsX$B, dev, rsN$B * dev,
-                           n_threads = n_threads, block_size = block_size)
+  BX <- if (inherits(Xblk, "geno")) {
+    # Stream the risk-set means of X at the event times in descending-time order.
+    ord <- order(surv_time, decreasing = TRUE)
+    w <- exp(eta - max(eta))
+    run <- rle(surv_time[ord])
+    run_id <- rep(seq_along(run$lengths), run$lengths)
+    has_event <- tabulate(run_id[status[ord] == 1L], length(run$lengths)) > 0
+    blk_end <- cumsum(run$lengths)[has_event]
+    S0 <- cumsum(w[ord])[blk_end]
+    rows <- max(1L, min(as.integer(block_size), 2^26 %/% p))
+    BtdB <- matrix(0, p, p)
+    BtdN <- matrix(0, p, k)
+    carry <- numeric(p)
+    for (start in seq.int(1L, n, by = rows)) {
+      idx <- start:min(n, start + rows - 1L)
+      G <- Xblk[ord[idx], , drop = FALSE]
+      S1 <- matrix(apply(G * w[ord[idx]], 2L, cumsum), nrow = length(idx)) +
+        rep(carry, each = length(idx))
+      carry <- S1[length(idx), ]
+      b_idx <- which(blk_end >= start & blk_end <= max(idx))
+      if (length(b_idx) == 0L) next
+      Bblk <- S1[blk_end[b_idx] - start + 1L, , drop = FALSE] / S0[b_idx]
+      BtdB <- BtdB + crossprod(Bblk, Bblk * dev[b_idx])
+      BtdN <- BtdN + crossprod(Bblk, rsN$B[b_idx, , drop = FALSE] * dev[b_idx])
+    }
+    list(XtWX = BtdB, XtM = BtdN)
+  } else {
+    weighted_crossprod(rsX$B, dev, rsN$B * dev,
+                       n_threads = n_threads, block_size = block_size)
+  }
   XX <- AX$XtWX - BX$XtWX
   XN <- AX$XtM[, seq_len(k), drop = FALSE] - BX$XtM
   NN <- crossprod(N, N * a) - crossprod(rsN$B, rsN$B * dev)

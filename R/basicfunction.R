@@ -196,6 +196,16 @@ stop("The Gaussian refit produced an invalid residual variance.")
 as.numeric(v)
 }
 
+xtv <- function(X, v) {
+  if (inherits(X, "geno")) return(as.numeric(CppMatrix::geno_crossprod(X, v)))
+  as.vector(matrixMultiply(matrix(v, nrow = 1L), X))
+}
+
+xv <- function(X, B) {
+  if (inherits(X, "geno")) return(CppMatrix::geno_multiply(X, B))
+  if (is.null(dim(B))) matrixVectorMultiply(X, B) else matrixMultiply(X, B)
+}
+
 solve_with_ridge <- function(A, B = NULL, ridge = 1e-8) {
 A <- as.matrix(A)
 if (nrow(A) != ncol(A)) stop("A must be a square matrix.")
@@ -259,9 +269,7 @@ r <- as.numeric(residual)
 ok <- is.finite(r)
 if (!any(ok)) return(NA_integer_)
 r[!ok] <- 0
-scores <- as.numeric(CppMatrix::matrixMultiply(
-X, matrix(r, ncol = 1), transA = TRUE
-))
+scores <- xtv(X, r)
 scores[!available] <- NA_real_
 scores[!is.finite(scores)] <- NA_real_
 if (all(is.na(scores))) return(NA_integer_)
@@ -603,7 +611,7 @@ if (is.null(fit)) return(NULL)
 beta_total <- clean_coef(coef.susie(fit)[-1L])
 if (!length(beta_total) || length(beta_total) != ncol(X)) return(NULL)
 
-eta_total <- as.numeric(matrixVectorMultiply(X, beta_total))
+eta_total <- as.numeric(xv(X, beta_total))
 build_noncs_residual(
 eta = eta_total,
 projection_design = XCS,
@@ -623,7 +631,7 @@ if (length(beta_total) != ncol(X)) {
 stop("The SuSiE coefficient vector does not match ncol(X).")
 }
 
-eta_total <- as.numeric(matrixVectorMultiply(X, beta_total))
+eta_total <- as.numeric(xv(X, beta_total))
 eta_total[!is.finite(eta_total)] <- 0
 
 eta_total
@@ -725,7 +733,7 @@ if (length(vars_in_cs_i) > 0) Alpha_filtered[i, vars_in_cs_i] <- fit$alpha[i, va
 }
 # group fits use the unit posterior direction of each group, not its sign
 Alpha_filtered <- Alpha_filtered * if (is.null(fit$group)) sign(fit$mu) else fit$unit_mu
-XCS <- matrixMultiply(X, t(as.matrix(Alpha_filtered)))
+XCS <- xv(X, t(as.matrix(Alpha_filtered)))
 XCS <- XCS[, cs_indices, drop = FALSE]
 if (is.null(dim(XCS))) XCS <- matrix(XCS, ncol = 1)
 colnames(XCS) <- paste0(prefix, cs_indices)
