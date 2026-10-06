@@ -124,8 +124,8 @@ single effect with prior `N(0, V I / d)` on its `d` columns, so `V` is the total
 effect variance of the group. Its joint Bayes factor competes with the other
 candidates and the levels inside a group do not compete, so an effect spread
 over several levels is pooled into one direction. The interacting levels are
-identified by the per-level `lfsr` (local false sign rate; a level interacts
-when `lfsr < 0.05`; levels are compared with the dropped baseline) in
+described by the per-level `lfsr` (local false sign rate of that single
+effect, reported as is; levels are compared with the dropped baseline) in
 `interaction_discoveries`, which lists every level of a
 selected group with the group's `PIP` and names both sides (`Group1`, `Term1`,
 `Group2`, `Term2`, `Pair`). A group enters the refit as one column (its

@@ -25,7 +25,7 @@ fit <- SuSiE4I(
 )
 
 fit$main_discoveries
-# Each selected group lists its levels; lfsr < 0.05 marks the interacting levels.
+# Each selected group lists its levels with the lfsr of that single effect.
 # InCS = FALSE marks refit components without a credible set; Coverage is the CS
 # coverage or the purified coverage at coverage_nonkilled.
 fit$interaction_discoveries[, c("Pair", "CS", "PIP", "lfsr", "Coverage", "Pvalue", "InCS")]

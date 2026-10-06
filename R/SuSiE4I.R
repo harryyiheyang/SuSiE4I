@@ -36,9 +36,9 @@
 #'   candidates and its levels do not compete with each other. Other `Z`
 #'   columns stay single candidates, and `Z` by main-effect interactions
 #'   still follow `noint_env`. `interaction_discoveries` lists every level of
-#'   a selected group with the group's `PIP` and the per-level `lfsr` (a level
-#'   interacts when `lfsr < 0.05`; levels are compared with the dropped
-#'   baseline), and gains `Group1`, `Term1`, `Group2`,
+#'   a selected group with the group's `PIP` and the per-level `lfsr` of that single
+#'   effect (reported as is; levels are compared with the dropped baseline),
+#'   and gains `Group1`, `Term1`, `Group2`,
 #'   `Term2` and `Pair`. The refit uses one column per group (its posterior
 #'   direction), so `Pvalue` tests the whole group.
 #'   Not supported with `select_env = TRUE`.
