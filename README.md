@@ -131,7 +131,7 @@ SuSiE: a group single effect with prior `N(0, V I / d)` on its `d` columns, so
 `V` is the total effect variance of the group. Its joint Bayes factor competes
 with the other candidates; the levels inside a group do not compete. The
 interacting levels are identified by the per-level `lfsr` (local false sign
-rate) in `interaction_discoveries`, which lists every level of a selected group
+rate; a level interacts when `lfsr < 0.05`) in `interaction_discoveries`, which lists every level of a selected group
 with the group's `PIP` and names both sides (`Group1`, `Term1`, `Group2`,
 `Term2`, `Pair`). A group enters the refit as one column (its posterior
 direction), so `Pvalue` tests the whole group effect. When every group is a

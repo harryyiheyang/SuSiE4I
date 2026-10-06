@@ -43,7 +43,7 @@
 #'   `N(0, V I / d)`; its joint Bayes factor competes with the other candidates
 #'   and its levels do not compete with each other. `interaction_discoveries`
 #'   lists every level of a selected group with the group's `PIP` and the
-#'   per-level `lfsr`, which identifies the interacting levels, and gains
+#'   per-level `lfsr` (a level interacts when `lfsr < 0.05`), and gains
 #'   `Group1`, `Term1`, `Group2`, `Term2` and `Pair`. The refit uses one column
 #'   per group (its posterior direction), so `Pvalue` tests the whole group.
 #'   A group marked `attr(x, "type") <- "ordinal"` (columns in level order,
