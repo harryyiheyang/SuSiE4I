@@ -23,9 +23,12 @@ y <- 0.15 * xs[, 10] - 0.12 * xs[, 50] + 0.2 * DA[, "HA_a2"] + 0.1 * age +
   0.35 * DA[, "HA_a3"] * xs[, 10] + 0.5 * DA[, "HA_a1"] * DB[, "HB_b2"] +
   rnorm(n)
 
+# HapA and HapB are marked cross, so HapA x HapB interactions are also built.
+gi <- list(HapA = colnames(DA), HapB = colnames(DB))
+attr(gi$HapA, "cross") <- TRUE
+attr(gi$HapB, "cross") <- TRUE
 fit <- SuSiE4I(
-  X = X, Z = Z, y = y, family = "gaussian",
-  groupint_ind = list(HapA = colnames(DA), HapB = colnames(DB)),
+  X = X, Z = Z, y = y, family = "gaussian", groupint_ind = gi,
   L_main = 5, verbose = FALSE
 )
 
@@ -36,7 +39,6 @@ fit$main_discoveries
 fit$interaction_discoveries[, c("Pair", "CS", "PIP", "lfsr", "Coverage", "Pvalue", "InCS")]
 
 # An ordinal factor (levels in order, reference lowest) gets the random-walk prior.
-gi <- list(HapA = colnames(DA), HapB = colnames(DB))
 attr(gi$HapA, "type") <- "ordinal"
 fit_ord <- SuSiE4I(X = X, Z = Z, y = y, family = "gaussian", groupint_ind = gi,
                    L_main = 5, verbose = FALSE)

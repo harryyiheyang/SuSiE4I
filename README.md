@@ -115,17 +115,18 @@ final Cox partial-likelihood refit on the selected summaries.
 ## Interactions Between Groups of Z Columns (Haplotypes)
 
 Factor-coded covariates such as haplotypes can be passed in `Z` as indicator
-columns, with `groupint_ind` listing which columns form each group, for
-example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"), HapB = "HB_b1")`
-(indices or names; at least two groups; a group may hold one column; no
-column in two groups). For every pair of groups, each column of one group
-times each column of the other is an interaction column, and columns within a
-group are never paired. Products with `crossprod(x) / n` below `1e-8` are
-skipped. Interactions of `Z` with the main-effect credible sets follow
-`noint_env`.
+columns (baseline level dropped), with `groupint_ind` listing which columns
+form each group, for example `groupint_ind = list(HapA = c("HA_a1", "HA_a2"),
+HapB = "HB_b1")` (indices or names; a group may hold one column; no column in
+two groups). Each group interacts with the main-effect credible sets, following
+`noint_env`. Groups marked `attr(x, "cross") <- TRUE` also interact with each
+other: for every pair of cross groups, each column of one times each column of
+the other is an interaction column, and columns within a group are never
+paired. Products with `crossprod(x) / n` below `1e-8` are skipped. Without at
+least two cross groups there are no `Z` by `Z` interactions.
 
 All columns that pair the same two sides (one group with a main-effect credible
-set, or two groups with each other) form ONE candidate in the interaction
+set, or two cross groups with each other) form ONE candidate in the interaction
 SuSiE: a group single effect with prior `N(0, V I / d)` on its `d` columns, so
 `V` is the total effect variance of the group. Its joint Bayes factor competes
 with the other candidates; the levels inside a group do not compete. The

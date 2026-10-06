@@ -27,15 +27,19 @@
 #'   outcome paths.
 #' @param L_env Number of environmental SuSiE components.
 #' @param noint_env Indices of `Z` columns excluded from interaction construction.
-#' @param groupint_ind Optional list of at least two groups of `Z` columns,
-#'   given as column indices or names (for example the indicator columns of
-#'   each haplotype or other factor; a group may hold a single column). For
-#'   every pair of groups, each column of one group times each column of the
-#'   other is an interaction column; columns within a group are never paired,
-#'   and a product with `crossprod(x) / n < 1e-8` is skipped. A column may
-#'   belong to only one group. `Z` by main-effect interactions still follow
-#'   `noint_env`. The columns that pair the same two sides (a group with a
-#'   main-effect CS, or two groups) form one group single effect with prior
+#' @param groupint_ind Optional list of groups of `Z` columns, given as
+#'   column indices or names (for example the indicator columns of each
+#'   haplotype or other factor, baseline level dropped; a group may hold a
+#'   single column). A column may belong to only one group. Each group
+#'   interacts with the main-effect CSs. Groups marked
+#'   `attr(x, "cross") <- TRUE` also interact with each other: for every pair
+#'   of cross groups, each column of one times each column of the other is an
+#'   interaction column (never within a group; a product with
+#'   `crossprod(x) / n < 1e-8` is skipped). With fewer than two cross groups
+#'   there are no `Z` by `Z` interactions. `Z` by main-effect interactions
+#'   still follow `noint_env`. The columns that pair the same two sides (a
+#'   group with a main-effect CS, or two cross groups) form one group single
+#'   effect with prior
 #'   `N(0, V I / d)`; its joint Bayes factor competes with the other candidates
 #'   and its levels do not compete with each other. `interaction_discoveries`
 #'   lists every level of a selected group with the group's `PIP` and the

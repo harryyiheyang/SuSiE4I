@@ -1,8 +1,9 @@
 ###############################################################################
 # Pairwise interactions between groups of Z columns (e.g. haplotype dummies).
 #
-# groupint_ind lists groups of Z columns. For every pair of different groups,
-# each column of one group times each column of the other is added to the
+# groupint_ind lists groups of Z columns (factors). Only groups marked
+# attr(, "cross") <- TRUE are paired: for every pair of different cross groups,
+# each column of one times each column of the other is added to the
 # interaction design; columns within a group are never paired. Z x main-CS
 # interactions still follow noint_env. The interaction stage then treats the
 # columns that pair the same two sides as one group (gsusie_ss).
@@ -10,9 +11,7 @@
 
 normalize_groupint_ind <- function(groupint_ind, Z) {
 if (is.null(groupint_ind)) return(NULL)
-if (!is.list(groupint_ind) || length(groupint_ind) < 2L) {
-stop("groupint_ind must be a list of at least two groups of Z columns.")
-}
+if (!is.list(groupint_ind)) stop("groupint_ind must be a list of groups of Z columns.")
 q <- ncol(Z)
 nm <- colnames(Z)
 labels <- names(groupint_ind)
@@ -33,9 +32,11 @@ stop("A Z column appears in more than one groupint_ind group.")
 out[pos] <- labels[k]
 lev[pos] <- seq_along(pos)
 }
-# level order inside each group, and the groups marked attr(, "type") <- "ordinal"
+# level order inside each group, the groups marked attr(, "type") <- "ordinal",
+# and the groups marked attr(, "cross") <- TRUE
 attr(out, "level") <- lev
 attr(out, "ordinal") <- labels[vapply(groupint_ind, function(x) identical(attr(x, "type"), "ordinal"), TRUE)]
+attr(out, "cross") <- labels[vapply(groupint_ind, function(x) isTRUE(attr(x, "cross")), TRUE)]
 out
 }
 
@@ -43,7 +44,8 @@ get_groupint_interactions <- function(Z, groupint_ind, min_xtx = 1e-8) {
 Z <- as.matrix(Z)
 nmZ <- colnames(Z)
 if (is.null(nmZ)) nmZ <- paste0("Z", seq_len(ncol(Z)))
-groups <- unique(stats::na.omit(groupint_ind))
+groups <- intersect(unique(stats::na.omit(groupint_ind)), attr(groupint_ind, "cross"))
+if (length(groups) < 2L) return(NULL)
 cols <- list()
 for (a in seq_len(length(groups) - 1L)) {
 for (b in (a + 1L):length(groups)) {
