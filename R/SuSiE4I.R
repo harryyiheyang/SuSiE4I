@@ -7,7 +7,13 @@
 #' the dispersion is iterated to its ridge fixed point and one final mgcv fit
 #' is produced for the returned formal model and downstream LBF calculations.
 #'
-#' @param X An n by p numeric predictor matrix.
+#' @param X An n by p numeric predictor matrix, or a `geno` object, or a list of
+#'   arguments to `geno_open()` (`bedfile` or `pgenfile`, and
+#'   optionally `snp_vec`, `sample_vec`, `impute`) that opens the genotypes
+#'   without forming a dense n by p matrix in R; standardization follows
+#'   `scale_data` and `crossprodX` is not needed. `y`, `Z` and `status` must
+#'   follow the sample order of the file, or of `sample_vec` when given; values
+#'   are A1 (BED) or ALT (PGEN) allele counts.
 #' @param Z Optional n by q environmental-covariate matrix.
 #' @param y Response vector, ordered factor, or `survival::Surv` object.
 #' @param status Optional event indicator for Cox models when `y` is a
@@ -130,12 +136,19 @@ status <- as.integer(y[, 2])
 y <- as.numeric(y[, 1])
 }
 
+if (is.list(X) && !inherits(X, "geno") && !is.data.frame(X)) {
+X <- do.call(geno_open, c(X, list(scale = scale_data, threads = n_threads)))
+}
+if (inherits(X, "geno")) {
+X$scale <- scale_data
+} else {
 X <- as.matrix(X)
 if (!is.numeric(X)) stop("X must be numeric.")
+}
 if (ncol(X) == 0) stop("X has zero columns.")
 n <- nrow(X)
 if (length(y) != n) stop("Length(y) must equal nrow(X).")
-if (scale_data) X <- large_scale(X)
+if (scale_data && !inherits(X, "geno")) X <- large_scale(X)
 if (is.null(colnames(X))) colnames(X) <- paste0("X", seq_len(ncol(X)))
 
 if (!is.null(groupint_ind) && is.null(Z)) stop("groupint_ind requires Z.")

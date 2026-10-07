@@ -30,6 +30,34 @@ large_scale_cpp <- function(X, center = TRUE, scale = TRUE, n_threads = 4L) {
     .Call(`_SuSiE4I_large_scale_cpp`, X, center, scale, n_threads)
 }
 
+geno_open_bed_cpp <- function(path, n_total, m_total, variants, samples, mean, threads) {
+    .Call(`_SuSiE4I_geno_open_bed_cpp`, path, n_total, m_total, variants, samples, mean, threads)
+}
+
+geno_open_pgen_cpp <- function(path, n_total, allele_ct, variants, samples, mean, threads) {
+    .Call(`_SuSiE4I_geno_open_pgen_cpp`, path, n_total, allele_ct, variants, samples, mean, threads)
+}
+
+geno_info_cpp <- function(ptr) {
+    .Call(`_SuSiE4I_geno_info_cpp`, ptr)
+}
+
+geno_xtx_cpp <- function(ptr, threads) {
+    .Call(`_SuSiE4I_geno_xtx_cpp`, ptr, threads)
+}
+
+geno_xtm_cpp <- function(ptr, M, threads) {
+    .Call(`_SuSiE4I_geno_xtm_cpp`, ptr, M, threads)
+}
+
+geno_mx_cpp <- function(ptr, B, threads) {
+    .Call(`_SuSiE4I_geno_mx_cpp`, ptr, B, threads)
+}
+
+geno_dense_cpp <- function(ptr, rows, cols, threads) {
+    .Call(`_SuSiE4I_geno_dense_cpp`, ptr, rows, cols, threads)
+}
+
 weighted_crossprod_cpp <- function(X, w, M, block_size = 10000L, n_threads = 1L, use_omp = FALSE) {
     .Call(`_SuSiE4I_weighted_crossprod_cpp`, X, w, M, block_size, n_threads, use_omp)
 }

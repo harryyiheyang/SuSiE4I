@@ -149,7 +149,7 @@ Run_GGE_Select_Cox <- function(X, Z, y, status,
     {
     w_noncs <- build_w_noncs_refit_term(
       W = W, fitW = fitW, WCS = WCS,
-      etaX = matrixVectorMultiply(X, beta), XCS = XCS, Z = Z,
+      etaX = xv(X, beta), XCS = XCS, Z = Z,
       w_noncs_var = w_noncs_var, min_etaW_var = min_etaW_var,
       noncs_max_abs_cor = noncs_max_abs_cor
     )

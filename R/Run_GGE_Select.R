@@ -76,12 +76,12 @@ Run_GGE_Select <- function(X, Z, y, mgcv_model = NULL, crossprodX = NULL, Lmain,
         ZCS <- env_terms$ZCS
         ZCS_refit <- env_terms$ZCS_refit
         rX <- y - etaZ - etaW - eta0
-        Xty <- as.vector(matrixMultiply(matrix(rX, nrow = 1L), X))
+        Xty <- xtv(X, rX)
         yty4X <- sum(rX^2)
         fitX <- .fit_susie_stage(structural = list(XtX = XtX, Xty = Xty, yty = yty4X, n = n, L = Lmain),
             susie_para = susie_para_main, stage = "main", iter = iter, min.iter = min.iter, gaussian = TRUE, residual_variance = phi0)
         beta <- coef.susie(fitX)[-1]
-        etaX <- matrixVectorMultiply(X, beta)
+        etaX <- xv(X, beta)
         CSdt <- summary(fitX)$vars
         x_component <- build_component_design_from_fit(X, fitX, "Main_CS")
         cs_indices <- x_component$cs_indices

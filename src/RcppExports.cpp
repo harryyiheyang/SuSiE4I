@@ -67,6 +67,103 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// geno_open_bed_cpp
+SEXP geno_open_bed_cpp(const std::string& path, int n_total, int m_total, const Rcpp::IntegerVector& variants, const Rcpp::IntegerVector& samples, bool mean, int threads);
+RcppExport SEXP _SuSiE4I_geno_open_bed_cpp(SEXP pathSEXP, SEXP n_totalSEXP, SEXP m_totalSEXP, SEXP variantsSEXP, SEXP samplesSEXP, SEXP meanSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< int >::type n_total(n_totalSEXP);
+    Rcpp::traits::input_parameter< int >::type m_total(m_totalSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type variants(variantsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< bool >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_open_bed_cpp(path, n_total, m_total, variants, samples, mean, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_open_pgen_cpp
+SEXP geno_open_pgen_cpp(const std::string& path, int n_total, const Rcpp::IntegerVector& allele_ct, const Rcpp::IntegerVector& variants, const Rcpp::IntegerVector& samples, bool mean, int threads);
+RcppExport SEXP _SuSiE4I_geno_open_pgen_cpp(SEXP pathSEXP, SEXP n_totalSEXP, SEXP allele_ctSEXP, SEXP variantsSEXP, SEXP samplesSEXP, SEXP meanSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< int >::type n_total(n_totalSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type allele_ct(allele_ctSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type variants(variantsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< bool >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_open_pgen_cpp(path, n_total, allele_ct, variants, samples, mean, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_info_cpp
+Rcpp::List geno_info_cpp(SEXP ptr);
+RcppExport SEXP _SuSiE4I_geno_info_cpp(SEXP ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_info_cpp(ptr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_xtx_cpp
+Rcpp::NumericMatrix geno_xtx_cpp(SEXP ptr, int threads);
+RcppExport SEXP _SuSiE4I_geno_xtx_cpp(SEXP ptrSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_xtx_cpp(ptr, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_xtm_cpp
+Rcpp::NumericMatrix geno_xtm_cpp(SEXP ptr, const Rcpp::NumericMatrix& M, int threads);
+RcppExport SEXP _SuSiE4I_geno_xtm_cpp(SEXP ptrSEXP, SEXP MSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type M(MSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_xtm_cpp(ptr, M, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_mx_cpp
+Rcpp::NumericMatrix geno_mx_cpp(SEXP ptr, const Rcpp::NumericMatrix& B, int threads);
+RcppExport SEXP _SuSiE4I_geno_mx_cpp(SEXP ptrSEXP, SEXP BSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_mx_cpp(ptr, B, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// geno_dense_cpp
+Rcpp::NumericMatrix geno_dense_cpp(SEXP ptr, const Rcpp::IntegerVector& rows, const Rcpp::IntegerVector& cols, int threads);
+RcppExport SEXP _SuSiE4I_geno_dense_cpp(SEXP ptrSEXP, SEXP rowsSEXP, SEXP colsSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type cols(colsSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(geno_dense_cpp(ptr, rows, cols, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // weighted_crossprod_cpp
 Rcpp::List weighted_crossprod_cpp(const arma::mat& X, const arma::vec& w, const arma::mat& M, int block_size, int n_threads, bool use_omp);
 RcppExport SEXP _SuSiE4I_weighted_crossprod_cpp(SEXP XSEXP, SEXP wSEXP, SEXP MSEXP, SEXP block_sizeSEXP, SEXP n_threadsSEXP, SEXP use_ompSEXP) {
@@ -89,6 +186,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SuSiE4I_blockwise_crossprod_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod_cpp, 3},
     {"_SuSiE4I_blockwise_crossprod2_cpp", (DL_FUNC) &_SuSiE4I_blockwise_crossprod2_cpp, 4},
     {"_SuSiE4I_large_scale_cpp", (DL_FUNC) &_SuSiE4I_large_scale_cpp, 4},
+    {"_SuSiE4I_geno_open_bed_cpp", (DL_FUNC) &_SuSiE4I_geno_open_bed_cpp, 7},
+    {"_SuSiE4I_geno_open_pgen_cpp", (DL_FUNC) &_SuSiE4I_geno_open_pgen_cpp, 7},
+    {"_SuSiE4I_geno_info_cpp", (DL_FUNC) &_SuSiE4I_geno_info_cpp, 1},
+    {"_SuSiE4I_geno_xtx_cpp", (DL_FUNC) &_SuSiE4I_geno_xtx_cpp, 2},
+    {"_SuSiE4I_geno_xtm_cpp", (DL_FUNC) &_SuSiE4I_geno_xtm_cpp, 3},
+    {"_SuSiE4I_geno_mx_cpp", (DL_FUNC) &_SuSiE4I_geno_mx_cpp, 3},
+    {"_SuSiE4I_geno_dense_cpp", (DL_FUNC) &_SuSiE4I_geno_dense_cpp, 4},
     {"_SuSiE4I_weighted_crossprod_cpp", (DL_FUNC) &_SuSiE4I_weighted_crossprod_cpp, 6},
     {NULL, NULL, 0}
 };

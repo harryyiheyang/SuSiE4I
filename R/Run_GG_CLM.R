@@ -157,7 +157,7 @@ Run_GG_CLM <- function(X, y, clm_link,
       {
       w_noncs <- build_w_noncs_refit_term(
         W = W, fitW = fitW, WCS = WCS,
-        etaX = matrixVectorMultiply(X, beta),
+        etaX = xv(X, beta),
         XCS = XCS, Z = NULL,
         w_noncs_var = w_noncs_var, min_etaW_var = min_etaW_var,
         noncs_max_abs_cor = noncs_max_abs_cor
