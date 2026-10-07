@@ -36,7 +36,10 @@ SuSiE4I_GAM(
 
 \item{data}{Data frame with the response and the null-model covariates.}
 
-\item{X}{Numeric n by p genotype matrix.}
+\item{X}{Numeric n by p genotype matrix, a `geno` object, or a list of
+arguments to `geno_open()` (`bedfile` or `pgenfile`, and optionally
+`snp_vec`, `sample_vec`, `impute`); the rows of `data` must follow
+`sample_vec` (or the .fam/.psam order).}
 
 \item{family}{GLM or mgcv family (default `gaussian()`).}
 

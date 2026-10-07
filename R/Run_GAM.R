@@ -50,7 +50,7 @@ Run_GAM <- function(X, null, family = gaussian(), mgcv_model = NULL, Lmain, Lint
         fitX <- .fit_susie_stage(structural = list(XtX = XtX, Xty = Xty, yty = yty4X, n = max(0.95 * n, work$n_eff), L = Lmain),
             susie_para = susie_para_main, stage = "main", iter = iter, min.iter = min.iter, gaussian = FALSE, residual_variance = work$phi0)
         beta <- coef.susie(fitX)[-1]
-        etaX <- matrixVectorMultiply(X, beta)
+        etaX <- xv(X, beta)
         CSdt <- summary(fitX)$vars
         x_component <- build_component_design_from_fit(X, fitX, "Main_CS")
         cs_indices <- x_component$cs_indices

@@ -38,7 +38,10 @@
 #'
 #' @param formula Null-model formula with univariate `s()` terms.
 #' @param data Data frame with the response and the null-model covariates.
-#' @param X Numeric n by p genotype matrix.
+#' @param X Numeric n by p genotype matrix, a `geno` object, or a list of
+#'   arguments to `geno_open()` (`bedfile` or `pgenfile`, and optionally
+#'   `snp_vec`, `sample_vec`, `impute`); the rows of `data` must follow
+#'   `sample_vec` (or the .fam/.psam order).
 #' @param family GLM or mgcv family (default `gaussian()`).
 #' @param mgcv_model `"gam"` (REML) or `"bam"` (fREML, `discrete = TRUE`).
 #' @param k Basis dimension of each smooth unless set inside `s()`.
@@ -53,8 +56,15 @@ SuSiE4I_GAM <- function(formula, data, X, family = gaussian(), mgcv_model = "gam
                         max_iter = 10, max_eps = 1e-5, min_iter = 2,
                         x_noncs_var = 0.1, w_noncs_var = 0.1, noncs_max_abs_cor = 0.9,
                         suff_block_size = 10000L, verbose = TRUE, returnModel = FALSE) {
+if (is.list(X) && !inherits(X, "geno") && !is.data.frame(X)) {
+X <- do.call(geno_open, c(X, list(scale = TRUE, threads = n_threads)))
+}
+if (inherits(X, "geno")) {
+if (!scale_data) X$sd[] <- 1   # centre only, as sweep(X, 2, colMeans(X))
+} else {
 X <- as.matrix(X)
 X <- if (scale_data) large_scale(X) else sweep(X, 2L, colMeans(X))
+}
 if (is.null(colnames(X))) colnames(X) <- paste0("X", seq_len(ncol(X)))
 null <- gam_null_setup(formula, data, family, mgcv_model, k, noint_vars)
 Run_GAM(X = X, null = null, family = family, mgcv_model = mgcv_model, Lmain = L_main, Lint = L_int,
