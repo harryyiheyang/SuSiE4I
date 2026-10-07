@@ -1,8 +1,8 @@
 # geno_open(): a PLINK BED or PGEN genotype matrix kept in memory as 2-bit
 # planes (n p / 4 bytes) instead of an n x p double matrix. The object behaves
 # like a numeric matrix for dim(), dimnames() and [ , and gives the products
-# fine-mapping needs through geno_crossprod(), geno_multiply() and
-# geno_wcrossprod(). Values are A1 (BED) or ALT (PGEN) allele dosages, as in
+# fine-mapping needs through the exported geno_crossprod() and geno_multiply()
+# and the internal geno_wcrossprod(). Values are A1 (BED) or ALT (PGEN) allele dosages, as in
 # BEDMatrix; missing calls are filled with
 # the variant's lower median (impute = "median") or its observed mean
 # ("mean"); with scale = TRUE every product is that of the column-standardized
@@ -130,7 +130,17 @@ print.geno <- function(x, ...) {
 #' @export
 as.matrix.geno <- function(x, ...) x[, , drop = FALSE]
 
-# crossprod(X) by exact popcount, or crossprod(X, M) for a dense M with one row per sample.
+#' Cross products of a geno matrix
+#'
+#' `geno_crossprod(X)` is `crossprod(X)` by exact popcount; `geno_crossprod(X, M)`
+#' is `crossprod(X, M)` for a dense `M` with one row per sample. With
+#' `X$scale = TRUE` both are those of the column-standardized matrix.
+#'
+#' @param X A `geno` object from [geno_open()].
+#' @param M Optional dense matrix (or vector) with one row per sample.
+#' @param threads Number of OpenMP threads.
+#' @return A p by p matrix when `M` is `NULL`, otherwise a p by `ncol(M)` matrix.
+#' @export
 geno_crossprod <- function(X, M = NULL, threads = X$threads) {
   if (is.null(M)) {
     out <- geno_xtx_cpp(X$ptr, threads)
@@ -148,7 +158,17 @@ geno_crossprod <- function(X, M = NULL, threads = X$threads) {
   out
 }
 
-# X %*% B for B with one row per variant; a vector B gives a vector.
+#' Multiply a geno matrix by a dense matrix or vector
+#'
+#' `geno_multiply(X, B)` is `X %*% B` for `B` with one row per variant; a
+#' vector `B` gives a vector. With `X$scale = TRUE` it is the product of the
+#' column-standardized matrix.
+#'
+#' @param X A `geno` object from [geno_open()].
+#' @param B Dense matrix with one row per variant, or a numeric vector.
+#' @param threads Number of OpenMP threads.
+#' @return An n by `ncol(B)` matrix, or a numeric vector when `B` is a vector.
+#' @export
 geno_multiply <- function(X, B, threads = X$threads) {
   vec <- is.null(dim(B))
   B <- as.matrix(B) + 0
