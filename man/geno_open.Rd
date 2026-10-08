@@ -39,8 +39,10 @@ matrix.}
 \item{threads}{Number of OpenMP threads.}
 }
 \value{
-An object of class `geno` with fields `n`, `p`, `snp`, `sample`
-  (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
+An object of class `geno` with fields `n`, `p`, `snp`, `chr`, `pos`,
+  `a1`, `a2` (aligned with `snp`; `a1` is the counted allele: bim column 5
+  for BED, ALT for PGEN, and `a2` the other allele: bim column 6 or REF),
+  `sample` (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
   external pointer, so it is valid only in the current R session (it cannot
   be saved with `saveRDS` or sent to parallel workers).
 }

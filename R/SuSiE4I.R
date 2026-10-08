@@ -94,7 +94,17 @@
 #'   `environment_discoveries`, component summaries, diagnostics, and optional
 #'   model data. Non-CS refit terms are nuisance variables rather than
 #'   discoveries; refit p-values are descriptive rather than post-selection
-#'   inference.
+#'   inference. When `X` is a `geno` object (or a list opened by `geno_open()`),
+#'   `main_discoveries` gains `CHR`, `POS`, `A1` (the counted allele: bim column
+#'   5 for BED, ALT for PGEN), `A2` (the other allele) and `Sign` (+1/-1, the
+#'   direction of the variant's effect on A1). The refit column of a credible
+#'   set is sign-aligned, so a refit coefficient times `Sign` is the effect of
+#'   one extra A1 copy; positive means A1 increases the outcome (linear
+#'   predictor). Interaction terms are built from credible-set columns, so
+#'   `interaction_discoveries` gains `CHR_k`, `POS_k`, `A1_k`, `A2_k`, `Sign_k`
+#'   (k = 1, 2, `NA` where the factor is an environment) for the lead (highest
+#'   PIP) variant of each credible-set factor; the other variants of a
+#'   credible set are in `main_discoveries`.
 #'
 #' @importFrom Matrix crossprod
 #' @importFrom stats var lm glm coef binomial gaussian cor cov2cor reformulate sd
@@ -106,6 +116,35 @@
 #'
 #' @export
 SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
+                    mgcv_model = NULL,
+                    crossprodX = NULL, scale_data = TRUE,
+                    n_threads = 4,
+                    L_main = 10, L_int = 5,
+                    select_env = FALSE, L_env = 10, noint_env = NULL,
+                    groupint_ind = NULL, coverage_nonkilled = NULL,
+                    include_x_squared = FALSE,
+                    susie_para_main = NULL,
+                    susie_para_int = NULL,
+                    susie_para_env = NULL,
+                    max_iter = 10, max_eps = 1e-5, min_iter = 2,
+                    L.init = 1,
+                    x_noncs_var = 0.1,
+                    w_noncs_var = 0.1,
+                    noncs_max_abs_cor = 0.9,
+                    suff_block_size = 10000L,
+                    verbose = TRUE, returnModel = FALSE) {
+cl <- match.call()
+cl[[1L]] <- quote(.SuSiE4I_core)
+if (is.list(X) && !inherits(X, "geno") && !is.data.frame(X)) {
+X <- do.call(geno_open, c(X, list(scale = scale_data, threads = n_threads)))
+cl$X <- X
+}
+res <- eval(cl, parent.frame())
+if (inherits(X, "geno")) res <- .add_alleles(res, X)
+res
+}
+
+.SuSiE4I_core <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     mgcv_model = NULL,
                     crossprodX = NULL, scale_data = TRUE,
                     n_threads = 4,

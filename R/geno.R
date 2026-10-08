@@ -31,8 +31,10 @@
 #' @param scale Whether products and dense blocks are of the standardized
 #'   matrix.
 #' @param threads Number of OpenMP threads.
-#' @return An object of class `geno` with fields `n`, `p`, `snp`, `sample`
-#'   (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
+#' @return An object of class `geno` with fields `n`, `p`, `snp`, `chr`, `pos`,
+#'   `a1`, `a2` (aligned with `snp`; `a1` is the counted allele: bim column 5
+#'   for BED, ALT for PGEN, and `a2` the other allele: bim column 6 or REF),
+#'   `sample` (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
 #'   external pointer, so it is valid only in the current R session (it cannot
 #'   be saved with `saveRDS` or sent to parallel workers).
 #' @export
@@ -50,12 +52,20 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
     bim <- data.table::fread(paste0(base, ".bim"), header = FALSE, colClasses = "character")
     fam <- data.table::fread(paste0(base, ".fam"), header = FALSE, colClasses = "character")
     snp <- bim[[2L]]
+    chr <- bim[[1L]]
+    pos <- bim[[4L]]
+    a1 <- bim[[5L]]
+    a2 <- bim[[6L]]
     fid <- fam[[1L]]
     iid <- fam[[2L]]
   } else {
     files <- .geno_pgen_files(pgenfile)
     pv <- data.table::fread(files$pvar, skip = "#CHROM", colClasses = "character")
     snp <- pv[["ID"]]
+    chr <- pv[["#CHROM"]]
+    pos <- pv[["POS"]]
+    a1 <- pv[["ALT"]]
+    a2 <- pv[["REF"]]
     allele_ct <- 1L + nchar(pv$ALT) - nchar(gsub(",", "", pv$ALT, fixed = TRUE))
     ps <- data.table::fread(files$psam, colClasses = "character")
     iid <- ps[[if ("#IID" %in% names(ps)) "#IID" else "IID"]]
@@ -73,7 +83,8 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
   }
   info <- geno_info_cpp(ptr)
   structure(list(ptr = ptr, n = length(sidx), p = length(vidx),
-                 snp = snp[vidx], sample = iid[sidx],
+                 snp = snp[vidx], chr = chr[vidx], pos = pos[vidx],
+                 a1 = a1[vidx], a2 = a2[vidx], sample = iid[sidx],
                  impute = impute, scale = scale,
                  center = info$mean, sd = info$sd, threads = threads),
             class = "geno")
@@ -204,4 +215,48 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   list(pgen = normalizePath(pgen, mustWork = TRUE),
        pvar = normalizePath(pvar, mustWork = TRUE),
        psam = normalizePath(psam, mustWork = TRUE))
+}
+
+# Adds CHR/POS/A1/A2 of the reported variants to the discovery tables of a
+# SuSiE4I() fit on a geno object. Main rows are located by column index and
+# get Sign (+1/-1: direction of the variant's effect on A1; the refit column of
+# a credible set is sign-aligned, so its coefficient times Sign is the A1
+# effect). Interaction terms are built from credible-set columns ("Main_CSk"),
+# so each such factor is reported through the credible set's lead variant
+# (highest PIP) and Sign_k; a factor that is a Z column has no variant (NA).
+.add_alleles <- function(res, X) {
+  fit_sign <- function(l, j) {
+    m <- res$fitX
+    m <- if (is.null(m)) NULL else if (is.null(m$group)) m$mu else m$unit_mu
+    if (is.null(m) || is.na(l) || j > ncol(m)) return(NA_real_)
+    sign(m[l, j])
+  }
+  main <- res$main_discoveries
+  if (is.data.frame(main) && nrow(main) > 0L && "Index" %in% names(main)) {
+    i <- main$Index
+    l <- suppressWarnings(as.integer(sub("^Main_CS", "", main$CS)))
+    main$CHR <- X$chr[i]; main$POS <- X$pos[i]
+    main$A1 <- X$a1[i]; main$A2 <- X$a2[i]
+    main$Sign <- mapply(fit_sign, l, i)
+    res$main_discoveries <- main
+    lead <- main[!duplicated(main$CS), , drop = FALSE]
+  }
+  int <- res$interaction_discoveries
+  if (is.data.frame(int) && nrow(int) > 0L && "Variable" %in% names(int)) {
+    parts <- strsplit(as.character(int$Variable), "*", fixed = TRUE)
+    pick <- function(v, k) {
+      v <- v[grepl("^Main_CS[0-9]+$", v)]
+      if (length(v) < k) return(NA_integer_)
+      match(v[k], lead$CS)
+    }
+    for (k in 1:2) {
+      r <- vapply(parts, pick, 1L, k = k)
+      i <- lead$Index[r]
+      int[[paste0("CHR_", k)]] <- X$chr[i]; int[[paste0("POS_", k)]] <- X$pos[i]
+      int[[paste0("A1_", k)]] <- X$a1[i]; int[[paste0("A2_", k)]] <- X$a2[i]
+      int[[paste0("Sign_", k)]] <- lead$Sign[r]
+    }
+    res$interaction_discoveries <- int
+  }
+  res
 }

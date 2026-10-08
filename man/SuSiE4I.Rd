@@ -155,7 +155,17 @@ A list containing the fitted SuSiE objects, final joint model,
   `environment_discoveries`, component summaries, diagnostics, and optional
   model data. Non-CS refit terms are nuisance variables rather than
   discoveries; refit p-values are descriptive rather than post-selection
-  inference.
+  inference. When `X` is a `geno` object (or a list opened by `geno_open()`),
+  `main_discoveries` gains `CHR`, `POS`, `A1` (the counted allele: bim column
+  5 for BED, ALT for PGEN), `A2` (the other allele) and `Sign` (+1/-1, the
+  direction of the variant's effect on A1). The refit column of a credible
+  set is sign-aligned, so a refit coefficient times `Sign` is the effect of
+  one extra A1 copy; positive means A1 increases the outcome (linear
+  predictor). Interaction terms are built from credible-set columns, so
+  `interaction_discoveries` gains `CHR_k`, `POS_k`, `A1_k`, `A2_k`, `Sign_k`
+  (k = 1, 2, `NA` where the factor is an environment) for the lead (highest
+  PIP) variant of each credible-set factor; the other variants of a
+  credible set are in `main_discoveries`.
 }
 \description{
 Fits main and interaction effects for Gaussian, GLM/mgcv,
