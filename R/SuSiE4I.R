@@ -100,7 +100,8 @@
 #'   refit coefficient per A1 dose on the model's linear-predictor scale (exact
 #'   for single-variant sets; Cox log HR, CLM latent scale).
 #'   `interaction_discoveries` adds `Effect`/`Effect_SE` (per dose product for
-#'   G x G, per dose and per SD of E for E x G; `NA` for `groupint_ind` groups).
+#'   G x G, per dose and per SD of E for E x G; `NA` with `Note = "group direction"` for
+#'   `groupint_ind` groups).
 #'
 #' @importFrom Matrix crossprod
 #' @importFrom stats var lm glm coef binomial gaussian cor cov2cor reformulate sd

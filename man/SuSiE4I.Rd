@@ -161,7 +161,8 @@ A list containing the fitted SuSiE objects, final joint model,
   refit coefficient per A1 dose on the model's linear-predictor scale (exact
   for single-variant sets; Cox log HR, CLM latent scale).
   `interaction_discoveries` adds `Effect`/`Effect_SE` (per dose product for
-  G x G, per dose and per SD of E for E x G; `NA` for `groupint_ind` groups).
+  G x G, per dose and per SD of E for E x G; `NA` with `Note = "group direction"` for
+  `groupint_ind` groups).
 }
 \description{
 Fits main and interaction effects for Gaussian, GLM/mgcv,

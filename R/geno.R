@@ -259,6 +259,7 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
       e <- eff(int$CS[r], d)
       int$Effect[r] <- e[1L]; int$Effect_SE[r] <- e[2L]
     }
+    if (any(has_group)) int$Note <- ifelse(has_group, "group direction", "")
     res$interaction_discoveries <- int
   }
   res
