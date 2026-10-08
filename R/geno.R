@@ -15,9 +15,7 @@
 #' allele counts as in BEDMatrix. Multiallelic PGEN variants are counted as REF
 #' versus all non-REF alleles. To choose the counted direction, set the target
 #' allele as REF upstream (`plink2 --ref-allele force target.txt 1 2
-#' --make-pgen`); the counted allele is then everything else. Note that
-#' `CppMatrix::pgen_cor` counts REF, so its LD matrix is unaffected but its
-#' signs are opposite to z-scores computed on these ALT counts.
+#' --make-pgen`); the counted allele is then everything else.
 #'
 #' @param bedfile PLINK 1 BED path or prefix (`.bim` and `.fam` alongside).
 #' @param pgenfile PLINK 2 PGEN path or prefix (hardcall-only, uncompressed
@@ -217,7 +215,7 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
        psam = normalizePath(psam, mustWork = TRUE))
 }
 
-# Adds CHR/POS/A1/A2 and Effect/Effect_SE to the discovery tables of a
+# Adds A1/A2 and Effect/Effect_SE to the discovery tables of a
 # SuSiE4I() fit on a geno object. CS columns are oriented like the lead
 # (highest-PIP) member, so the refit coefficient of a CS is per lead A1 copy up
 # to the unit change below, which is exact for a single-variant CS and uses the
