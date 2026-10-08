@@ -49,6 +49,10 @@ An object of class `geno` with fields `n`, `p`, `snp`,
 \description{
 Keeps the genotypes of a PLINK BED or PGEN file in 2-bit form, so SuSiE4I
 never holds an n by p double matrix in R. Values are A1 (BED) or ALT (PGEN)
-allele counts as in BEDMatrix; multiallelic PGEN variants count all non-REF
-alleles.
+allele counts as in BEDMatrix. Multiallelic PGEN variants are counted as REF
+versus all non-REF alleles. To choose the counted direction, set the target
+allele as REF upstream (`plink2 --ref-allele force target.txt 1 2
+--make-pgen`); the counted allele is then everything else. Note that
+`CppMatrix::pgen_cor` counts REF, so its LD matrix is unaffected but its
+signs are opposite to z-scores computed on these ALT counts.
 }
