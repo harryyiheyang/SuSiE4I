@@ -155,24 +155,13 @@ A list containing the fitted SuSiE objects, final joint model,
   `environment_discoveries`, component summaries, diagnostics, and optional
   model data. Non-CS refit terms are nuisance variables rather than
   discoveries; refit p-values are descriptive rather than post-selection
-  inference. Credible-set columns in the refit are oriented like the lead
-  (highest-PIP) member of the set, so a positive refit coefficient means one
-  more copy of the lead variant's counted allele (or a higher lead value)
-  increases the outcome (linear predictor). When `X` is a `geno` object (or a
-  list opened by `geno_open()`), `main_discoveries` gains `CHR`, `POS`, `A1`
-  (the counted allele: bim column 5 for BED, ALT for PGEN), `A2` (the other
-  allele), `Effect` and `Effect_SE`; `interaction_discoveries` gains
-  `CHR_k`, `POS_k`, `A1_k`, `A2_k` (k = 1, 2; `NA` where the factor is an
-  environment), `Effect` and `Effect_SE`. `Effect` is the refit coefficient
-  of the set converted to the response scale per lead A1 dose (per dose
-  product for G x G, per dose and per SD of the environment for E x G when
-  `scale_data = TRUE`, per unit otherwise; in the units of `y`, of the link
-  for GLMs, log hazard ratio for Cox, latent scale for CLM/ordinal; `NA`
-  for interactions with `groupint_ind`), and is given on the first
-  (lead) row of each set. The conversion divides by the lead variant's sd
-  (the scaling of `X`), so it is exact for single-variant sets and an
-  approximation by the lead variant otherwise. A1 and A2 of non-lead rows
-  describe that row's own variant.
+  inference. CS refit columns are oriented to the lead (highest-PIP) variant.
+  For geno input, `main_discoveries` adds `A1` (counted allele: bim column 5
+  / PGEN ALT), `A2`, and, on each set's lead row, `Effect`/`Effect_SE`: the
+  refit coefficient per A1 dose on the model's linear-predictor scale (exact
+  for single-variant sets; Cox log HR, CLM latent scale).
+  `interaction_discoveries` adds `Effect`/`Effect_SE` (per dose product for
+  G x G, per dose and per SD of E for E x G; `NA` for `groupint_ind` groups).
 }
 \description{
 Fits main and interaction effects for Gaussian, GLM/mgcv,

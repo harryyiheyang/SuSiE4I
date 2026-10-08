@@ -31,7 +31,7 @@
 #' @param scale Whether products and dense blocks are of the standardized
 #'   matrix.
 #' @param threads Number of OpenMP threads.
-#' @return An object of class `geno` with fields `n`, `p`, `snp`, `chr`, `pos`,
+#' @return An object of class `geno` with fields `n`, `p`, `snp`,
 #'   `a1`, `a2` (aligned with `snp`; `a1` is the counted allele: bim column 5
 #'   for BED, ALT for PGEN, and `a2` the other allele: bim column 6 or REF),
 #'   `sample` (IIDs in row order), `impute`, `scale`, `center` and `sd`. It holds an
@@ -52,8 +52,6 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
     bim <- data.table::fread(paste0(base, ".bim"), header = FALSE, colClasses = "character")
     fam <- data.table::fread(paste0(base, ".fam"), header = FALSE, colClasses = "character")
     snp <- bim[[2L]]
-    chr <- bim[[1L]]
-    pos <- bim[[4L]]
     a1 <- bim[[5L]]
     a2 <- bim[[6L]]
     fid <- fam[[1L]]
@@ -62,8 +60,6 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
     files <- .geno_pgen_files(pgenfile)
     pv <- data.table::fread(files$pvar, skip = "#CHROM", colClasses = "character")
     snp <- pv[["ID"]]
-    chr <- pv[["#CHROM"]]
-    pos <- pv[["POS"]]
     a1 <- pv[["ALT"]]
     a2 <- pv[["REF"]]
     allele_ct <- 1L + nchar(pv$ALT) - nchar(gsub(",", "", pv$ALT, fixed = TRUE))
@@ -83,7 +79,7 @@ geno_open <- function(bedfile = NULL, pgenfile = NULL, snp_vec = NULL,
   }
   info <- geno_info_cpp(ptr)
   structure(list(ptr = ptr, n = length(sidx), p = length(vidx),
-                 snp = snp[vidx], chr = chr[vidx], pos = pos[vidx],
+                 snp = snp[vidx],
                  a1 = a1[vidx], a2 = a2[vidx], sample = iid[sidx],
                  impute = impute, scale = scale,
                  center = info$mean, sd = info$sd, threads = threads),
@@ -224,25 +220,21 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
 # lead's sd otherwise. Effect/Effect_SE are filled on the lead row of each CS:
 # coefficient / sd(lead) (main), / (sd(lead1) sd(lead2)) (G x G) or / sd(lead)
 # (E x G); sd = 1 when X is not scaled.
-.add_alleles <- function(res, X, groupint = FALSE) {
+.add_alleles <- function(res, X) {
   sdx <- if (isTRUE(X$scale)) .geno_div(X) else rep(1, X$p)
-  tab <- tryCatch({
-    f <- res$fitJoint
-    g <- if (inherits(f, "coxph")) cox_coef_table(f)
+  f <- res$fitJoint
+  tab <- if (inherits(f, "coxph")) cox_coef_table(f)
          else if (inherits(f, "gam")) summary(f)$p.table
          else ocat_coef_table(f)
-    if (is.null(g) || ncol(g) < 2L) NULL else g
-  }, error = function(e) NULL)
   eff <- function(cs, div) {
     r <- match(cs, rownames(tab))
-    if (is.null(tab) || is.na(r)) return(c(NA_real_, NA_real_))
+    if (is.na(r)) return(c(NA_real_, NA_real_))
     c(tab[r, 1L], tab[r, 2L]) / div
   }
   main <- res$main_discoveries
   lead <- NULL
   if (is.data.frame(main) && nrow(main) > 0L && "Index" %in% names(main)) {
     i <- main$Index
-    main$CHR <- X$chr[i]; main$POS <- as.integer(X$pos[i])
     main$A1 <- X$a1[i]; main$A2 <- X$a2[i]
     is_lead <- !duplicated(main$CS)
     main$Effect <- NA_real_; main$Effect_SE <- NA_real_
@@ -260,14 +252,9 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
       v <- v[grepl("^Main_CS[0-9]+$", v)]
       match(v, lead$CS)[seq_len(min(2L, length(v)))]
     })
-    for (k in 1:2) {
-      r <- vapply(rr, function(m) if (length(m) >= k) m[k] else NA_integer_, 1L)
-      i <- lead$Index[r]
-      int[[paste0("CHR_", k)]] <- X$chr[i]; int[[paste0("POS_", k)]] <- as.integer(X$pos[i])
-      int[[paste0("A1_", k)]] <- X$a1[i]; int[[paste0("A2_", k)]] <- X$a2[i]
-    }
     int$Effect <- NA_real_; int$Effect_SE <- NA_real_
-    for (r in which(!duplicated(int$CS) & !groupint)) {
+    has_group <- if ("Group1" %in% names(int)) !is.na(int$Group1) | !is.na(int$Group2) else FALSE
+    for (r in which(!duplicated(int$CS) & !has_group)) {
       d <- prod(sdx[lead$Index[rr[[r]]]])
       e <- eff(int$CS[r], d)
       int$Effect[r] <- e[1L]; int$Effect_SE[r] <- e[2L]
