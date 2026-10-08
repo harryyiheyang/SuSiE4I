@@ -224,10 +224,13 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
 # lead's sd otherwise. Effect/Effect_SE are filled on the lead row of each CS:
 # coefficient / sd(lead) (main), / (sd(lead1) sd(lead2)) (G x G) or / sd(lead)
 # (E x G); sd = 1 when X is not scaled.
-.add_alleles <- function(res, X) {
-  sdx <- if (isTRUE(X$scale)) X$sd else rep(1, X$p)
+.add_alleles <- function(res, X, groupint = FALSE) {
+  sdx <- if (isTRUE(X$scale)) .geno_div(X) else rep(1, X$p)
   tab <- tryCatch({
-    g <- summary(res$fitJoint)$p.table
+    f <- res$fitJoint
+    g <- if (inherits(f, "coxph")) cox_coef_table(f)
+         else if (inherits(f, "gam")) summary(f)$p.table
+         else ocat_coef_table(f)
     if (is.null(g) || ncol(g) < 2L) NULL else g
   }, error = function(e) NULL)
   eff <- function(cs, div) {
@@ -239,7 +242,7 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
   lead <- NULL
   if (is.data.frame(main) && nrow(main) > 0L && "Index" %in% names(main)) {
     i <- main$Index
-    main$CHR <- X$chr[i]; main$POS <- X$pos[i]
+    main$CHR <- X$chr[i]; main$POS <- as.integer(X$pos[i])
     main$A1 <- X$a1[i]; main$A2 <- X$a2[i]
     is_lead <- !duplicated(main$CS)
     main$Effect <- NA_real_; main$Effect_SE <- NA_real_
@@ -260,11 +263,11 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
     for (k in 1:2) {
       r <- vapply(rr, function(m) if (length(m) >= k) m[k] else NA_integer_, 1L)
       i <- lead$Index[r]
-      int[[paste0("CHR_", k)]] <- X$chr[i]; int[[paste0("POS_", k)]] <- X$pos[i]
+      int[[paste0("CHR_", k)]] <- X$chr[i]; int[[paste0("POS_", k)]] <- as.integer(X$pos[i])
       int[[paste0("A1_", k)]] <- X$a1[i]; int[[paste0("A2_", k)]] <- X$a2[i]
     }
     int$Effect <- NA_real_; int$Effect_SE <- NA_real_
-    for (r in which(!duplicated(int$CS))) {
+    for (r in which(!duplicated(int$CS) & !groupint)) {
       d <- prod(sdx[lead$Index[rr[[r]]]])
       e <- eff(int$CS[r], d)
       int$Effect[r] <- e[1L]; int$Effect_SE[r] <- e[2L]

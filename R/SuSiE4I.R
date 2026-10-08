@@ -104,8 +104,10 @@
 #'   `CHR_k`, `POS_k`, `A1_k`, `A2_k` (k = 1, 2; `NA` where the factor is an
 #'   environment), `Effect` and `Effect_SE`. `Effect` is the refit coefficient
 #'   of the set converted to the response scale per lead A1 dose (per dose
-#'   product for G x G, per dose and per unit of the environment for E x G;
-#'   in the units of `y`, or of the link for GLMs), and is given on the first
+#'   product for G x G, per dose and per SD of the environment for E x G when
+#'   `scale_data = TRUE`, per unit otherwise; in the units of `y`, of the link
+#'   for GLMs, log hazard ratio for Cox, latent scale for CLM/ordinal; `NA`
+#'   for interactions with `groupint_ind`), and is given on the first
 #'   (lead) row of each set. The conversion divides by the lead variant's sd
 #'   (the scaling of `X`), so it is exact for single-variant sets and an
 #'   approximation by the lead variant otherwise. A1 and A2 of non-lead rows
@@ -138,14 +140,12 @@ SuSiE4I <- function(X, Z = NULL, y, status = NULL, family = NULL,
                     noncs_max_abs_cor = 0.9,
                     suff_block_size = 10000L,
                     verbose = TRUE, returnModel = FALSE) {
-cl <- match.call()
-cl[[1L]] <- quote(.SuSiE4I_core)
 if (is.list(X) && !inherits(X, "geno") && !is.data.frame(X)) {
 X <- do.call(geno_open, c(X, list(scale = scale_data, threads = n_threads)))
-cl$X <- X
 }
-res <- eval(cl, parent.frame())
-if (inherits(X, "geno")) res <- .add_alleles(res, X)
+if (inherits(X, "geno")) X$scale <- scale_data
+res <- .SuSiE4I_core(X = X, Z = Z, y = y, status = status, family = family, mgcv_model = mgcv_model, crossprodX = crossprodX, scale_data = scale_data, n_threads = n_threads, L_main = L_main, L_int = L_int, select_env = select_env, L_env = L_env, noint_env = noint_env, groupint_ind = groupint_ind, coverage_nonkilled = coverage_nonkilled, include_x_squared = include_x_squared, susie_para_main = susie_para_main, susie_para_int = susie_para_int, susie_para_env = susie_para_env, max_iter = max_iter, max_eps = max_eps, min_iter = min_iter, L.init = L.init, x_noncs_var = x_noncs_var, w_noncs_var = w_noncs_var, noncs_max_abs_cor = noncs_max_abs_cor, suff_block_size = suff_block_size, verbose = verbose, returnModel = returnModel)
+if (inherits(X, "geno")) res <- .add_alleles(res, X, !is.null(groupint_ind))
 res
 }
 

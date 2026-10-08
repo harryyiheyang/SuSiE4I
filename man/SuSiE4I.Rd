@@ -165,8 +165,10 @@ A list containing the fitted SuSiE objects, final joint model,
   `CHR_k`, `POS_k`, `A1_k`, `A2_k` (k = 1, 2; `NA` where the factor is an
   environment), `Effect` and `Effect_SE`. `Effect` is the refit coefficient
   of the set converted to the response scale per lead A1 dose (per dose
-  product for G x G, per dose and per unit of the environment for E x G;
-  in the units of `y`, or of the link for GLMs), and is given on the first
+  product for G x G, per dose and per SD of the environment for E x G when
+  `scale_data = TRUE`, per unit otherwise; in the units of `y`, of the link
+  for GLMs, log hazard ratio for Cox, latent scale for CLM/ordinal; `NA`
+  for interactions with `groupint_ind`), and is given on the first
   (lead) row of each set. The conversion divides by the lead variant's sd
   (the scaling of `X`), so it is exact for single-variant sets and an
   approximation by the lead variant otherwise. A1 and A2 of non-lead rows
