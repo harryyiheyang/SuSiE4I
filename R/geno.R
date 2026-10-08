@@ -217,44 +217,57 @@ geno_wcrossprod <- function(X, w, M = NULL, block_size = 10000L) {
        psam = normalizePath(psam, mustWork = TRUE))
 }
 
-# Adds CHR/POS/A1/A2 of the reported variants to the discovery tables of a
-# SuSiE4I() fit on a geno object. Main rows are located by column index and
-# get Sign (+1/-1: direction of the variant's effect on A1; the refit column of
-# a credible set is sign-aligned, so its coefficient times Sign is the A1
-# effect). Interaction terms are built from credible-set columns ("Main_CSk"),
-# so each such factor is reported through the credible set's lead variant
-# (highest PIP) and Sign_k; a factor that is a Z column has no variant (NA).
+# Adds CHR/POS/A1/A2 and Effect/Effect_SE to the discovery tables of a
+# SuSiE4I() fit on a geno object. CS columns are oriented like the lead
+# (highest-PIP) member, so the refit coefficient of a CS is per lead A1 copy up
+# to the unit change below, which is exact for a single-variant CS and uses the
+# lead's sd otherwise. Effect/Effect_SE are filled on the lead row of each CS:
+# coefficient / sd(lead) (main), / (sd(lead1) sd(lead2)) (G x G) or / sd(lead)
+# (E x G); sd = 1 when X is not scaled.
 .add_alleles <- function(res, X) {
-  fit_sign <- function(l, j) {
-    m <- res$fitX
-    m <- if (is.null(m)) NULL else if (is.null(m$group)) m$mu else m$unit_mu
-    if (is.null(m) || is.na(l) || j > ncol(m)) return(NA_real_)
-    sign(m[l, j])
+  sdx <- if (isTRUE(X$scale)) X$sd else rep(1, X$p)
+  tab <- tryCatch({
+    g <- summary(res$fitJoint)$p.table
+    if (is.null(g) || ncol(g) < 2L) NULL else g
+  }, error = function(e) NULL)
+  eff <- function(cs, div) {
+    r <- match(cs, rownames(tab))
+    if (is.null(tab) || is.na(r)) return(c(NA_real_, NA_real_))
+    c(tab[r, 1L], tab[r, 2L]) / div
   }
   main <- res$main_discoveries
+  lead <- NULL
   if (is.data.frame(main) && nrow(main) > 0L && "Index" %in% names(main)) {
     i <- main$Index
-    l <- suppressWarnings(as.integer(sub("^Main_CS", "", main$CS)))
     main$CHR <- X$chr[i]; main$POS <- X$pos[i]
     main$A1 <- X$a1[i]; main$A2 <- X$a2[i]
-    main$Sign <- mapply(fit_sign, l, i)
+    is_lead <- !duplicated(main$CS)
+    main$Effect <- NA_real_; main$Effect_SE <- NA_real_
+    for (r in which(is_lead)) {
+      e <- eff(main$CS[r], sdx[i[r]])
+      main$Effect[r] <- e[1L]; main$Effect_SE[r] <- e[2L]
+    }
     res$main_discoveries <- main
-    lead <- main[!duplicated(main$CS), , drop = FALSE]
+    lead <- main[is_lead, , drop = FALSE]
   }
   int <- res$interaction_discoveries
-  if (is.data.frame(int) && nrow(int) > 0L && "Variable" %in% names(int)) {
+  if (is.data.frame(int) && nrow(int) > 0L && "Variable" %in% names(int) && !is.null(lead)) {
     parts <- strsplit(as.character(int$Variable), "*", fixed = TRUE)
-    pick <- function(v, k) {
+    rr <- lapply(parts, function(v) {
       v <- v[grepl("^Main_CS[0-9]+$", v)]
-      if (length(v) < k) return(NA_integer_)
-      match(v[k], lead$CS)
-    }
+      match(v, lead$CS)[seq_len(min(2L, length(v)))]
+    })
     for (k in 1:2) {
-      r <- vapply(parts, pick, 1L, k = k)
+      r <- vapply(rr, function(m) if (length(m) >= k) m[k] else NA_integer_, 1L)
       i <- lead$Index[r]
       int[[paste0("CHR_", k)]] <- X$chr[i]; int[[paste0("POS_", k)]] <- X$pos[i]
       int[[paste0("A1_", k)]] <- X$a1[i]; int[[paste0("A2_", k)]] <- X$a2[i]
-      int[[paste0("Sign_", k)]] <- lead$Sign[r]
+    }
+    int$Effect <- NA_real_; int$Effect_SE <- NA_real_
+    for (r in which(!duplicated(int$CS))) {
+      d <- prod(sdx[lead$Index[rr[[r]]]])
+      e <- eff(int$CS[r], d)
+      int$Effect[r] <- e[1L]; int$Effect_SE[r] <- e[2L]
     }
     res$interaction_discoveries <- int
   }

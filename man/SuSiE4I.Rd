@@ -155,17 +155,22 @@ A list containing the fitted SuSiE objects, final joint model,
   `environment_discoveries`, component summaries, diagnostics, and optional
   model data. Non-CS refit terms are nuisance variables rather than
   discoveries; refit p-values are descriptive rather than post-selection
-  inference. When `X` is a `geno` object (or a list opened by `geno_open()`),
-  `main_discoveries` gains `CHR`, `POS`, `A1` (the counted allele: bim column
-  5 for BED, ALT for PGEN), `A2` (the other allele) and `Sign` (+1/-1, the
-  direction of the variant's effect on A1). The refit column of a credible
-  set is sign-aligned, so a refit coefficient times `Sign` is the effect of
-  one extra A1 copy; positive means A1 increases the outcome (linear
-  predictor). Interaction terms are built from credible-set columns, so
-  `interaction_discoveries` gains `CHR_k`, `POS_k`, `A1_k`, `A2_k`, `Sign_k`
-  (k = 1, 2, `NA` where the factor is an environment) for the lead (highest
-  PIP) variant of each credible-set factor; the other variants of a
-  credible set are in `main_discoveries`.
+  inference. Credible-set columns in the refit are oriented like the lead
+  (highest-PIP) member of the set, so a positive refit coefficient means one
+  more copy of the lead variant's counted allele (or a higher lead value)
+  increases the outcome (linear predictor). When `X` is a `geno` object (or a
+  list opened by `geno_open()`), `main_discoveries` gains `CHR`, `POS`, `A1`
+  (the counted allele: bim column 5 for BED, ALT for PGEN), `A2` (the other
+  allele), `Effect` and `Effect_SE`; `interaction_discoveries` gains
+  `CHR_k`, `POS_k`, `A1_k`, `A2_k` (k = 1, 2; `NA` where the factor is an
+  environment), `Effect` and `Effect_SE`. `Effect` is the refit coefficient
+  of the set converted to the response scale per lead A1 dose (per dose
+  product for G x G, per dose and per unit of the environment for E x G;
+  in the units of `y`, or of the link for GLMs), and is given on the first
+  (lead) row of each set. The conversion divides by the lead variant's sd
+  (the scaling of `X`), so it is exact for single-variant sets and an
+  approximation by the lead variant otherwise. A1 and A2 of non-lead rows
+  describe that row's own variant.
 }
 \description{
 Fits main and interaction effects for Gaussian, GLM/mgcv,

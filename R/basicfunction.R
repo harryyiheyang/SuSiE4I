@@ -736,6 +736,12 @@ Alpha_filtered <- Alpha_filtered * if (is.null(fit$group)) sign(fit$mu) else fit
 XCS <- xv(X, t(as.matrix(Alpha_filtered)))
 XCS <- XCS[, cs_indices, drop = FALSE]
 if (is.null(dim(XCS))) XCS <- matrix(XCS, ncol = 1)
+# orient each CS column like its lead (highest-PIP) member, so a positive refit coefficient means the lead's X increases the response
+mu_lead <- if (is.null(fit$group)) fit$mu else fit$unit_mu
+lead_sign <- vapply(seq_along(cs_indices), function(k) {
+v <- cs$vars[[k]]; v <- v[v >= 1L & v <= ncol(X)]
+sg <- sign(mu_lead[cs_indices[k], v[which.max(fit$pip[v])]]); if (is.finite(sg) && sg != 0) sg else 1 }, 1)
+XCS <- sweep(XCS, 2L, lead_sign, "*")
 colnames(XCS) <- paste0(prefix, cs_indices)
 list(design = XCS, cs_indices = cs_indices)
 }
