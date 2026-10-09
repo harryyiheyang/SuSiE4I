@@ -836,7 +836,8 @@ stop("nuisance_precision must be supplied explicitly for every projection.")
 }
 if (!is.null(ZI)) ZI <- as.matrix(ZI)
 q <- if (is.null(ZI)) 0L else ncol(ZI)
-projection_precision <- align_projection_precision(ZI, nuisance_precision)
+projection_precision <- if (is.matrix(nuisance_precision)) nuisance_precision else
+  align_projection_precision(ZI, nuisance_precision)
 block_size <- max(1L, as.integer(block_size))
 
 y <- as.numeric(y)
@@ -853,7 +854,8 @@ yty <- sum(weights * y^2)
 yty_raw <- yty
 if (q > 0L) {
 ZtZ <- matrixMultiply(ZI, Zw, transA = TRUE)
-diag(ZtZ) <- diag(ZtZ) + projection_precision
+if (is.matrix(projection_precision)) ZtZ <- ZtZ + projection_precision else
+  diag(ZtZ) <- diag(ZtZ) + projection_precision
 ZtX <- t(wc$XtM[, seq_len(q), drop = FALSE])
 Zty <- as.numeric(matrixMultiply(ZI, matrix(wy, ncol = 1), transA = TRUE))
 rm(Zw)

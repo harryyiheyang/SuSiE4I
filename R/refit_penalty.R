@@ -218,7 +218,7 @@ fit
 
 mgcv_fit_fixed_ridge <- function(response, rhs, data, family, penalty_V,
                                  dispersion = 1, offset = NULL,
-                                 mgcv_model = NULL) {
+                                 mgcv_model = NULL, formula = NULL, extra_pen = NULL) {
 penalty_names <- names(penalty_V)
 penalty_V <- as.numeric(penalty_V)
 names(penalty_V) <- penalty_names
@@ -250,13 +250,23 @@ diag(dispersion / penalty_V, nrow = length(penalty_V),
      ncol = length(penalty_V)),
 sp = 1
 ))
+# extra penalized blocks (SuSiE4I_GAM): list(name = list(X = matrix, P = prior precision))
+for (nm in names(extra_pen)) {
+dat[[nm]] <- I(extra_pen[[nm]]$X)
+rhs <- c(rhs, nm)
+PP[[nm]] <- list(dispersion * extra_pen[[nm]]$P, sp = 1)
+}
 
 family <- mgcv_patch_family_environment(family)
 fml <- mgcv_explicit_formula(response = response, rhs = rhs, offset = offset)
+# A GAM null formula (SuSiE4I_GAM) replaces the linear covariates; bam then runs discrete.
+if (!is.null(formula)) fml <- stats::update(formula, stats::as.formula(paste(". ~ . +", paste(c("X_pen", names(extra_pen)), collapse = " + "))))
 model <- mgcv_model_name(mgcv_model, nrow(dat))
 fit_fun <- if (identical(model, "gam")) mgcv::gam else mgcv::bam
 method <- if (identical(model, "gam")) "REML" else "fREML"
-fit <- fit_fun(fml, data = dat, family = family, method = method, paraPen = PP)
+fit <- if (identical(model, "bam") && !is.null(formula)) {
+  fit_fun(fml, data = dat, family = family, method = method, paraPen = PP, discrete = TRUE)
+} else fit_fun(fml, data = dat, family = family, method = method, paraPen = PP)
 
 bundled <- grep("^X_pen", names(stats::coef(fit)))
 if (length(bundled) != length(penalty_names)) {
