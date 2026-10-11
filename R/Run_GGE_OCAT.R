@@ -122,7 +122,7 @@ Run_GGE_OCAT <- function(X, Z, y, family = NULL, mgcv_model = NULL, Lmain, Lint,
             }
         }
         XCS_W <- XCS_refit
-        W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env, include_x_squared = if (main_no_cs)
+        W <- get_pairwise_interactions(XCS_W, Z = groupint_contrast_Z(Z, groupint_ind), noint_env = noint_env, include_x_squared = if (main_no_cs)
             FALSE
         else include_x_squared)
         WCS <- NULL

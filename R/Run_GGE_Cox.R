@@ -106,7 +106,7 @@ eta <- fit_final$linear.predictors
 eta <- pmin(pmax(eta, eta_clip_range[1]), eta_clip_range[2])
 
 XCS_W <- XCS_refit
-W <- get_pairwise_interactions(XCS_W, Z = Z, noint_env = noint_env,
+W <- get_pairwise_interactions(XCS_W, Z = groupint_contrast_Z(Z, groupint_ind), noint_env = noint_env,
                                include_x_squared = if (is.null(XCS)) FALSE else include_x_squared)
 WCS <- NULL
 WCS_refit <- NULL

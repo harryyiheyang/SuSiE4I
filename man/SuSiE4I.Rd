@@ -91,7 +91,12 @@ a selected group with the group's `PIP` and the per-level `lfsr` of that
 single effect (reported as is; levels are compared with the dropped
 baseline), and gains `Group1`, `Term1`, `Group2`, `Term2` and `Pair`.
 The refit uses one column per group (its posterior direction), so
-`Pvalue` tests the whole group. Not supported with `select_env = TRUE`.}
+`Pvalue` tests the whole group. Not supported with `select_env = TRUE`.
+A group can also be `list(index = <columns>, baseline = <0/1 vector of
+the dropped level>)`: its interaction columns are then orthonormal
+sum-to-zero contrasts of the full factor, so no level is the reference
+(main effects in `Z` are unchanged); per-column `lfsr` then refers to
+these contrasts.}
 
 \item{coverage_nonkilled}{Coverage for interaction-stage components that
 do not form a credible set. A component SuSiE did not kill (prior
